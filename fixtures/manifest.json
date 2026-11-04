@@ -1,0 +1,41 @@
+{
+  "generated_by": "scripts/make-fixtures.py",
+  "purpose": "采样级无缝循环的自动化断言与听感基准",
+  "synthetic_only": true,
+  "items": [
+    {
+      "file": "intro_loop_44100_mono.wav",
+      "format": "wav",
+      "sample_rate": 44100,
+      "channels": 1,
+      "total_samples": 121275,
+      "loop_start": 33075,
+      "loop_end": 121275,
+      "loop_length": 88200,
+      "phase_continuous": true,
+      "note": "循环体为整数周期波形，LoopStart/LoopEnd 相位一致"
+    },
+    {
+      "file": "intro_loop_48000_stereo.wav",
+      "format": "wav",
+      "sample_rate": 48000,
+      "channels": 2,
+      "total_samples": 132000,
+      "loop_start": 36000,
+      "loop_end": 132000,
+      "loop_length": 96000,
+      "phase_continuous": true,
+      "note": "循环体为整数周期波形，LoopStart/LoopEnd 相位一致"
+    },
+    {
+      "file": "intro_loop_44100_mono.mp3",
+      "format": "mp3",
+      "sample_rate": 44100,
+      "channels": 1,
+      "decoded_duration": 2.75,
+      "derived_from": "intro_loop_44100_mono.wav",
+      "phase_continuous": true,
+      "note": "MP3 存在编码器延迟/填充，解码后的采样位置与源 WAV 不同。循环点须在解码后实测，不可直接沿用源 WAV 的数值。"
+    }
+  ]
+}
