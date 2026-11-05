@@ -48,8 +48,8 @@
 
 ## 7. 验证与归档
 
-- [ ] 7.1 为 T01~T04、T08~T11、T14 编写单元测试（C++ 侧，可在本机跑）
-- [ ] 7.2 运行 `scripts/verify.ps1 --change 0001-harmony-loop-kernel`，保存日志到 `artifacts/`
-- [ ] 7.3 回填 `docs/verify/0001-harmony-loop-kernel.md`，未执行项登记到 `docs/verification-debt.md`
-- [ ] 7.4 更新 `docs/traceability.md` 与 `docs/regression-log.md`
+- [x] 7.1 为 T01~T04、T08~T11、T14 编写单元测试（C++ 侧，可在本机跑；已由 10 个套件覆盖：`DecodeThreadTests` / `LoopConfigTests` / `LoopCounterTests` / `ProgressTests` / `TransportTests`）
+- [x] 7.2 运行 `scripts/verify.ps1 --change 0001-harmony-loop-kernel`，保存日志到 `artifacts/`（`artifacts/verify-0001-harmony-loop-kernel-20261105-191954.log`，4 steps / 0 failed）
+- [x] 7.3 回填 `docs/verify/0001-harmony-loop-kernel.md`，未执行项登记到 `docs/verification-debt.md`（T15 / T16 / T05 听测与真实素材仍为阻塞，已记账）
+- [x] 7.4 更新 `docs/traceability.md` 与 `docs/regression-log.md`
 - [ ] 7.5 人类审查证据后执行 `openspec archive 0001-harmony-loop-kernel`

@@ -6,15 +6,15 @@
 |---|---|
 | change id | `0001-harmony-loop-kernel` |
 | 执行人 | AI 智能体（TRAE） |
-| 执行时间 | 2026-11-05 19:14（最近一次） |
+| 执行时间 | 2026-11-05 19:19（最近一次） |
 | 机器 / 系统 | Windows 11（开发机） |
 | 工具链版本 | OpenSpec CLI 1.14.3；CMake 4.2.3；MSVC 19.44.35228.0；Python 3.14 + numpy 2.5.3；ffmpeg N-122110；DevEco Studio 26.0.0（build DS-261.23567.138.36.2600865）；hvigor 6.26.9 |
 | 运行环境 | HarmonyOS SDK 26.0.0.105（apiVersion 26，Release）；hdc 3.2.0f；**真机 MRT-AL10（序列号 5KTUT25424016774，API 26，系统 7.0.0.111(SP12C00E111R5P2)）于 19:06 断开，当前 `hdc list targets` 为空** |
 | 命令 | `powershell -File scripts/verify.ps1 --change 0001-harmony-loop-kernel` |
-| 日志 | `artifacts/verify-0001-harmony-loop-kernel-20261105-191425.log` |
+| 日志 | `artifacts/verify-0001-harmony-loop-kernel-20261105-191954.log` |
 | 结果包 | `fixtures/synthetic/` 3 个音频 + `fixtures/manifest.json`；`entry/build/default/outputs/default/entry-default-signed.hap`（3 713 719 B，含 `libs/arm64-v8a/libentry.so`、`libs/x86_64/libentry.so` 与 `resources/rawfile/intro_loop_44100_mono.wav`） |
 
-**本次验证范围**：任务 1.1、2.2~2.5、3.1~3.5、4.1~4.5、5.1~5.3、6.1 已完成。本机单元测试 10 套件 / 1172 断言全通过；真机 G0 冒烟（2.5）已实测通过。任务 6.2 / 6.3 真机听测仍阻塞（真机于 19:06 断开，`hdc list targets` 为空）。功能场景 T15~T16 仍未实现；T05 的 200ms 听感条款待 6.3；T17 第 3 条事件已接线但未真机验证。
+**本次验证范围**：任务 1.1、2.2~2.5、3.1~3.5、4.1~4.5、5.1~5.3、6.1、7.1~7.4 已完成。本机单元测试 10 套件 / 1172 断言全通过；真机 G0 冒烟（2.5）已实测通过。仍未完成：任务 6.2 / 6.3 真机听测（真机于 19:06 断开，`hdc list targets` 为空）、任务 1.3 真实素材、任务 7.5 归档（需人类批准）。功能场景 T15~T16 仍为 `NOT RUN`；T05 的 200ms 听感条款待 6.3；T17 第 3 条事件已接线但未真机验证。
 
 ## 2. 需求覆盖
 
@@ -235,6 +235,16 @@
 | HAP 构建 | **PASS**（BUILD SUCCESSFUL in 11 s 977 ms） |
 | 真机运行 | **NOT RUN**：`hdc list targets` 为空，页面渲染、fixture 复制与进度刷新均未在真机上验证 |
 
+### 任务 7.1~7.4 收口（2026-11-05 19:19）
+
+| 检查项 | 实测结果 |
+|---|---|
+| 7.1 测试覆盖 | T01 `DecodeThreadTests.testLoopJumpsBackToStart`；T02~T04 `LoopConfigTests`；T08 / T09 `LoopCounterTests`；T10 / T11 `ProgressTests`；T14 `TransportTests` —— 均在 10 个套件中实际执行 |
+| 7.2 验证入口 | `verify.ps1 --change 0001-harmony-loop-kernel` → 4 steps / 0 failed；10 套件 / 1172 断言 / 0 失败 |
+| 7.3 证据回填 | 本报告；`docs/verification-debt.md` 保留 4 条阻塞项（T15 / T16 / T05 听测、`fixtures/real/` 真实素材），另记 4 条部分通过（T02、T17 第 3 条、napi、UI） |
+| 7.4 基线更新 | `docs/traceability.md` 17 条场景状态与变更记录已更新；`docs/regression-log.md` 追加 2026-11-05 收口行 |
+| 7.5 归档 | **NOT RUN**：需人类审查证据后执行，未提前归档 |
+
 ### 测试过程中发现并修正的缺陷
 
 | 编号 | 缺陷 | 处理 |
@@ -291,7 +301,7 @@
 - [x] 需修复后复验（Build 阶段进行中，非归档态）
 - [ ] 需人类决策
 
-**说明**：Plan 阶段产物（proposal / design / tasks / delta spec）已完成并通过严格校验；合成 fixture 已生成并通过相位连续性数值检查；HAP 构建、真机安装、启动与 G0 正弦波听测均已实测通过。当前已完成任务 1.1、2.2~2.5、3.1~3.5、4.1~4.5、5.1~5.3 与 6.1（播放内核、桥接层与最小界面）。任务 6.2 / 6.3 的循环听测需真机重新接入后执行。
+**说明**：Plan 阶段产物（proposal / design / tasks / delta spec）已完成并通过严格校验；合成 fixture 已生成并通过相位连续性数值检查；HAP 构建、真机安装、启动与 G0 正弦波听测均已实测通过。当前已完成任务 1.1、2.2~2.5、3.1~3.5、4.1~4.5、5.1~5.3、6.1 与 7.1~7.4（播放内核、桥接层、最小界面与证据收口）。剩余：6.2 / 6.3 听测需真机重新接入；7.5 归档需人类审查批准；1.3 真实素材待用户提供。
 
 已确认的决策：HarmonyOS SDK **26.0.0**、真实素材由用户提供、包名 `com.cpu.seamlessloopharmony`。
 

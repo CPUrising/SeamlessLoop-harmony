@@ -54,3 +54,4 @@
 | 2026-11-05 | T13 / T14 播放控制与按采样点跳转（任务 5.2） | 通过 | `artifacts/verify-0001-harmony-loop-kernel-20261105-185518.log`；`TransportTests` 10 用例 / 84 断言全通过 |
 | 2026-11-05 | napi 完整 API 与事件接线（任务 5.3） | 部分通过 | `artifacts/verify-0001-harmony-loop-kernel-20261105-190816.log`；HAP 构建通过，真机端到端待 6.2 |
 | 2026-11-05 | 最小界面构建与打包（任务 6.1） | 部分通过 | `artifacts/verify-0001-harmony-loop-kernel-20261105-191425.log`；`CompileArkTS` 与 `SignHap` 通过，rawfile fixture 已入 HAP；真机运行待 6.2 |
+| 2026-11-05 | Build 阶段证据收口（任务 7.1~7.4） | 通过 | `artifacts/verify-0001-harmony-loop-kernel-20261105-191954.log`；4 steps / 0 failed，10 套件 / 1172 断言，`traceability` 与 `regression-log` 已更新 |
