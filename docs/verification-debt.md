@@ -25,7 +25,8 @@
 | `RingBuffer` | T17 第 2 条：缓冲恢复后自动继续播放 | `RingBufferTests` | 通过 | 2026-11-05 实测：`testRecoversAfterUnderrun` + `testRecoversAfterUnderrunAcrossWrap`（含环绕边界）均通过 |
 | `AudioOutput` | T17 第 3 条：欠载事件回调上报 | `underrun` 事件 | 部分通过 | 2026-11-05 已接线：`AttachEngineToOutput()` 调用 `SetUnderrunCallback`，napi 暴露 `on('underrun')`；HAP 构建通过，真机端到端待 6.2 |
 | `napi` | 完整 API 与 ThreadSafeFunction 事件 | — | 部分通过 | 2026-11-05 构建通过；真机端到端（事件回调、真实播放）待 6.2 |
-| 听感验收 | T15 循环边界无静音间隙 | 人工听测 | 阻塞 | 真机于 19:06 断开；循环链路已实现，待 6.1 界面与 6.2 听测 |
+| `UI` | 任务 6.1 页面加载 fixture 并显示进度 / 循环次数 | `Index.ets` | 部分通过 | 2026-11-05 构建与打包通过（`resources/rawfile/intro_loop_44100_mono.wav` 已在 HAP 内）；真机运行待 6.2 |
+| 听感验收 | T15 循环边界无静音间隙 | 人工听测 | 阻塞 | 真机于 19:06 断开；循环链路与 6.1 界面已就绪，待 6.2 听测 |
 | 听感验收 | T16 循环边界无爆音 | 人工听测 | 阻塞 | 真机已断开；合成 fixture 相位连续性已数值验证；待 6.2 |
 | 听感验收 | T05 播放中改循环点无明显中断 | 人工听测 | 阻塞 | 真机已断开；跳转与清空逻辑已通过单测，200ms 听感条款待 6.3 |
 | 真实素材 | `fixtures/real/` 真实曲目听测 | 人工听测 | 阻塞 | 待用户提供素材与循环点数值 |
@@ -52,3 +53,4 @@
 | 2026-11-05 | T10 / T11 进度连续性与回绕补偿（任务 5.1） | 通过 | `artifacts/verify-0001-harmony-loop-kernel-20261105-184809.log`；`ProgressTests` 8 用例 / 45 断言全通过 |
 | 2026-11-05 | T13 / T14 播放控制与按采样点跳转（任务 5.2） | 通过 | `artifacts/verify-0001-harmony-loop-kernel-20261105-185518.log`；`TransportTests` 10 用例 / 84 断言全通过 |
 | 2026-11-05 | napi 完整 API 与事件接线（任务 5.3） | 部分通过 | `artifacts/verify-0001-harmony-loop-kernel-20261105-190816.log`；HAP 构建通过，真机端到端待 6.2 |
+| 2026-11-05 | 最小界面构建与打包（任务 6.1） | 部分通过 | `artifacts/verify-0001-harmony-loop-kernel-20261105-191425.log`；`CompileArkTS` 与 `SignHap` 通过，rawfile fixture 已入 HAP；真机运行待 6.2 |

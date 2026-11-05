@@ -22,6 +22,7 @@
 | 2026-11-05 | 按 tasks.md 推进任务 5.1：抽出 `progress.h` 做进度补偿与缓冲扣减，`DecodeThread` 暴露 `PlaybackFrame()`，补 `ProgressTests` | 不做 play/pause/stop/seek（5.2）、不做 napi 事件（5.3）、不改 UI |
 | 2026-11-05 | 按 tasks.md 推进任务 5.2：新增 `PlaybackEngine` 门面（load/play/pause/stop/seekToSample），`DecodeThread` 增加同步 `SeekToFrame`，补 `TransportTests` | 不做 napi 桥接（5.3）、不改 UI（6.1）、不接 OHAudio 渲染器启停 |
 | 2026-11-05 | 按 tasks.md 推进任务 5.3：napi 暴露完整 API 与 `loop` / `end` / `underrun` 事件（ThreadSafeFunction），`AudioOutput` 支持按文件格式配置渲染器 | 不改 ArkTS 页面（6.1）、不做真机听测（6.2 / 6.3，真机已断开） |
+| 2026-11-05 | 按 tasks.md 推进任务 6.1：最小 ArkTS 页面（加载 fixture、播放/暂停、进度与循环次数），fixture 经 rawfile 复制到沙箱固定路径 | 不做文件选择器、不做播放列表、不做 UI 美化；真机运行与听测（6.2 / 6.3）不做，真机当前断开 |
 
 ## 2. AI 产出
 
@@ -54,6 +55,7 @@
 | Native（任务 5.2） | `cpp/playback_engine.{h,cpp}`；`cpp/decode_thread.{h,cpp}` 新增同步 `SeekToFrame`、`seekApplied_` 与 `lastPlayback_` 单调保护 |
 | 测试（任务 5.2） | `cpp/tests/transport_test.cpp`；`cpp/CMakeLists.txt` 增加 `TransportTests` |
 | Native（任务 5.3） | `cpp/napi_init.cpp`（完整 API + ThreadSafeFunction 事件）、`cpp/audio_output.{h,cpp}`（`Configure` 与按格式取 BlockAlign）、`cpp/types/libentry/index.d.ts` |
+| UI（任务 6.1） | `entry/src/main/ets/pages/Index.ets`（加载、播放/暂停、停止、进度与循环次数）；`entry/src/main/resources/rawfile/intro_loop_44100_mono.wav` |
 
 关键决策记录在 `openspec/changes/0001-harmony-loop-kernel/design.md`（8 条决策，含放弃的方案）。
 
@@ -96,5 +98,6 @@
 | 2026-11-05 | `verify.ps1 --change 0001-harmony-loop-kernel`（任务 5.1 后） | PASS（4 steps, 0 failed；单测 9 套件 / 1088 断言） | `artifacts/verify-0001-harmony-loop-kernel-20261105-184809.log` |
 | 2026-11-05 | `verify.ps1 --change 0001-harmony-loop-kernel`（任务 5.2 后） | PASS（4 steps, 0 failed；单测 10 套件 / 1172 断言） | `artifacts/verify-0001-harmony-loop-kernel-20261105-185518.log` |
 | 2026-11-05 | `verify.ps1 --change 0001-harmony-loop-kernel`（任务 5.3 后） | PASS（4 steps, 0 failed；单测 10 套件 / 1172 断言） | `artifacts/verify-0001-harmony-loop-kernel-20261105-190816.log` |
+| 2026-11-05 | `verify.ps1 --change 0001-harmony-loop-kernel`（任务 6.1 后） | PASS（4 steps, 0 failed；单测 10 套件 / 1172 断言；HAP 含 rawfile fixture） | `artifacts/verify-0001-harmony-loop-kernel-20261105-191425.log` |
 
-未执行项：T15~T16 为 `NOT RUN`（需真机听测，待 6.2）；T02 / T05 为部分通过（运行时链路与听感条款）；T17 第 3 条事件已接线但未真机验证；任务 6.2 / 6.3 循环听测待真机重新接入且 6.1 完成后执行。详见 `docs/verification-debt.md`。
+未执行项：T15~T16 为 `NOT RUN`（需真机听测，待 6.2）；T02 / T05 为部分通过（运行时链路与听感条款）；T17 第 3 条事件已接线但未真机验证；任务 6.1 页面构建与打包通过但未真机运行；任务 6.2 / 6.3 循环听测待真机重新接入后执行。详见 `docs/verification-debt.md`。

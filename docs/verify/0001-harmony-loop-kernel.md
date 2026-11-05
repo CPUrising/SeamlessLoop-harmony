@@ -6,15 +6,15 @@
 |---|---|
 | change id | `0001-harmony-loop-kernel` |
 | 执行人 | AI 智能体（TRAE） |
-| 执行时间 | 2026-11-05 19:08（最近一次） |
+| 执行时间 | 2026-11-05 19:14（最近一次） |
 | 机器 / 系统 | Windows 11（开发机） |
 | 工具链版本 | OpenSpec CLI 1.14.3；CMake 4.2.3；MSVC 19.44.35228.0；Python 3.14 + numpy 2.5.3；ffmpeg N-122110；DevEco Studio 26.0.0（build DS-261.23567.138.36.2600865）；hvigor 6.26.9 |
 | 运行环境 | HarmonyOS SDK 26.0.0.105（apiVersion 26，Release）；hdc 3.2.0f；**真机 MRT-AL10（序列号 5KTUT25424016774，API 26，系统 7.0.0.111(SP12C00E111R5P2)）于 19:06 断开，当前 `hdc list targets` 为空** |
 | 命令 | `powershell -File scripts/verify.ps1 --change 0001-harmony-loop-kernel` |
-| 日志 | `artifacts/verify-0001-harmony-loop-kernel-20261105-190816.log` |
-| 结果包 | `fixtures/synthetic/` 3 个音频 + `fixtures/manifest.json`；`entry/build/default/outputs/default/entry-default-signed.hap`（3 364 578 B，含 `libs/arm64-v8a/libentry.so`、`libs/x86_64/libentry.so`） |
+| 日志 | `artifacts/verify-0001-harmony-loop-kernel-20261105-191425.log` |
+| 结果包 | `fixtures/synthetic/` 3 个音频 + `fixtures/manifest.json`；`entry/build/default/outputs/default/entry-default-signed.hap`（3 713 719 B，含 `libs/arm64-v8a/libentry.so`、`libs/x86_64/libentry.so` 与 `resources/rawfile/intro_loop_44100_mono.wav`） |
 
-**本次验证范围**：任务 1.1、2.2~2.5、3.1~3.5、4.1~4.5、5.1~5.3 已完成。本机单元测试 10 套件 / 1172 断言全通过；真机 G0 冒烟（2.5）已实测通过。任务 6.2 / 6.3 真机听测仍阻塞（真机于 19:06 断开，且最小界面未实现）。功能场景 T15~T16 仍未实现；T05 的 200ms 听感条款待 6.3；T17 第 3 条事件已接线但未真机验证。
+**本次验证范围**：任务 1.1、2.2~2.5、3.1~3.5、4.1~4.5、5.1~5.3、6.1 已完成。本机单元测试 10 套件 / 1172 断言全通过；真机 G0 冒烟（2.5）已实测通过。任务 6.2 / 6.3 真机听测仍阻塞（真机于 19:06 断开，`hdc list targets` 为空）。功能场景 T15~T16 仍未实现；T05 的 200ms 听感条款待 6.3；T17 第 3 条事件已接线但未真机验证。
 
 ## 2. 需求覆盖
 
@@ -222,6 +222,19 @@
 | HAP 构建 | **PASS**（BUILD SUCCESSFUL，`libentry.so` 含新桥接层） |
 | 真机端到端 | **NOT RUN**：真机于 19:06 断开（`hdc list targets` 为空），无法安装验证事件回调与真实播放 |
 
+### 任务 6.1 实测证据（2026-11-05 19:14）
+
+| 检查项 | 实测结果 |
+|---|---|
+| 页面实现 | `entry/src/main/ets/pages/Index.ets`：加载 fixture、播放/暂停、停止、进度（秒）与循环次数展示；无解码、无分析，只做转发 |
+| fixture 获取 | `fixtures/synthetic/intro_loop_44100_mono.wav` 复制到 `resources/rawfile/`，运行时经 `resourceManager.getRawFileContentSync` 写入 `filesDir` 固定路径，再交给 `load(path)`（design.md 决定的「沙箱内固定路径」） |
+| 循环点来源 | 由 `getFormat()` 推导：`LoopStart = totalFrames − 2 × sampleRate = 33075`，`LoopEnd = totalFrames = 121275`，与 `fixtures/manifest.json` 一致，未把数值写死在页面 |
+| 事件订阅 | `on('loop', cb)` 更新循环次数；`aboutToDisappear` 中 `off('loop')` 并清理 200ms 轮询定时器 |
+| ArkTS 编译 | **PASS**（`CompileArkTS` Finished；仅 4 条「Function may throw exceptions」提示，调用点已包在 `try/catch` 中） |
+| HAP 打包 | **PASS**：HAP 内实测存在 `resources/rawfile/intro_loop_44100_mono.wav`（242 594 B），HAP 总大小 3 713 719 B |
+| HAP 构建 | **PASS**（BUILD SUCCESSFUL in 11 s 977 ms） |
+| 真机运行 | **NOT RUN**：`hdc list targets` 为空，页面渲染、fixture 复制与进度刷新均未在真机上验证 |
+
 ### 测试过程中发现并修正的缺陷
 
 | 编号 | 缺陷 | 处理 |
@@ -270,6 +283,7 @@
 | D8 | `scripts/verify.ps1` 的构建步骤原用 hvigor daemon，本机会挂起（无输出、不退出） | 一般 | 已改为 `--no-daemon`（12~13 秒完成），属验证入口可复现性修正，不涉及产品代码。**注：该次挂起未复现、根因未定位**，`--no-daemon` 是官方降级方式，同时让验证入口不依赖常驻进程状态 |
 | D9 | 真机安装失败：`code:9568320 / no signature file` | 已解除 | 人类已在根 `build-profile.json5` 配置 `signingConfigs`；2026-11-05 12:18 signed HAP 安装成功 |
 | D10 | `wmic.exe` 在 Win11 已移除，hvigor 的 daemon 进程探测回退到 `powershell Get-CimInstance`，每次约 1.36 秒 | 一般 | 属 hvigor 工具链行为，不影响本工程代码；registry 条目超过 8 条时会触发批量探测，建议定期 `hvigorw --stop-daemon` |
+| D11 | 任务 6.1 把合成 fixture 打进 `resources/rawfile/`，与 design.md「用户把文件放入沙箱」的预期不同 | 一般 | 真机沙箱目录无法直接 push，rawfile 是让 6.2 / 6.3 可复现的最小手段；真实素材的导入方案仍按 D4 另行决策 |
 
 ## 5. 结论
 
@@ -277,7 +291,7 @@
 - [x] 需修复后复验（Build 阶段进行中，非归档态）
 - [ ] 需人类决策
 
-**说明**：Plan 阶段产物（proposal / design / tasks / delta spec）已完成并通过严格校验；合成 fixture 已生成并通过相位连续性数值检查；HAP 构建、真机安装、启动与 G0 正弦波听测均已实测通过。当前已完成任务 1.1、2.2~2.5、3.1~3.5、4.1~4.5 与 5.1~5.3（播放内核与桥接层全部完成），下一步为任务 6.1（最小界面）。任务 6.2 / 6.3 的循环听测需真机重新接入且界面就绪后执行。
+**说明**：Plan 阶段产物（proposal / design / tasks / delta spec）已完成并通过严格校验；合成 fixture 已生成并通过相位连续性数值检查；HAP 构建、真机安装、启动与 G0 正弦波听测均已实测通过。当前已完成任务 1.1、2.2~2.5、3.1~3.5、4.1~4.5、5.1~5.3 与 6.1（播放内核、桥接层与最小界面）。任务 6.2 / 6.3 的循环听测需真机重新接入后执行。
 
 已确认的决策：HarmonyOS SDK **26.0.0**、真实素材由用户提供、包名 `com.cpu.seamlessloopharmony`。
 
