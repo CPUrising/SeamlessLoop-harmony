@@ -79,6 +79,16 @@ if(BUILD_TESTS AND NOT CMAKE_SYSTEM_NAME STREQUAL "OHOS")
         ${NATIVERENDER_ROOT_PATH}/tests)
     add_test(NAME LoopConfigTests COMMAND loop_config_tests)
 
+    add_executable(loop_counter_tests
+        tests/loop_counter_test.cpp
+        ${SLH_CORE_SOURCES})
+    target_include_directories(loop_counter_tests PRIVATE
+        ${NATIVERENDER_ROOT_PATH}
+        ${NATIVERENDER_ROOT_PATH}/tests)
+    target_compile_definitions(loop_counter_tests PRIVATE
+        FIXTURE_DIR="${NATIVERENDER_ROOT_PATH}/../../../../fixtures/synthetic")
+    add_test(NAME LoopCounterTests COMMAND loop_counter_tests)
+
     return()
 endif()
 

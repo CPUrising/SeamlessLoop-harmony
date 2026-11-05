@@ -14,8 +14,8 @@
 | T05 | 播放中修改循环点立即生效 | 同上 → `T05` | `LoopConfigTests.testChangeOutsideRangeSeeks` + 真机听测 | 未实现 |
 | T06 | 播放中修改循环点不影响当前位置 | 同上 → `T06` | `LoopConfigTests.testChangeInsideRangeKeepsPosition` | 未实现 |
 | T07 | 关闭循环后的整曲播放 | 同上 → `T07` | `LoopStreamTests.testLoopDisabledStopsAtEnd` | 未实现 |
-| T08 | 循环次数单调递增 | 同上 → `T08` | `LoopCounterTests.testCounterIncrementsAndResets` | 未实现 |
-| T09 | 关闭循环时不上报循环事件 | 同上 → `T09` | `LoopCounterTests.testNoEventWhenDisabled` | 未实现 |
+| T08 | 循环次数单调递增 | 同上 → `T08` | `LoopCounterTests.testCounterIncrementsAndResets` | 通过 |
+| T09 | 关闭循环时不上报循环事件 | 同上 → `T09` | `LoopCounterTests.testNoEventWhenDisabled` | 通过 |
 | T10 | 进度在循环边界保持连续 | 同上 → `T10` | `ProgressTests.testProgressContinuousAcrossLoop` | 未实现 |
 | T11 | 进度在 Intro 阶段不误补偿 | 同上 → `T11` | `ProgressTests.testNoCompensationDuringIntro` | 未实现 |
 | T12 | 加载后可播放 | 同上 → `T12` | `DecoderTests.testLoadReportsFormat` | 通过 |
@@ -38,3 +38,4 @@
 | 2026-11-05 | `0001-harmony-loop-kernel` | 任务 3.4 / 3.5 完成：新增 `DecodeThreadTests`（34 断言）与 `AudioOutputLogicTests`（528 断言）；T17 仍为部分通过（真实欠载需真机） |
 | 2026-11-05 | `0001-harmony-loop-kernel` | 任务 4.1 完成：新增 `LoopConfigTests`（9 用例 / 74 断言），T03 / T04 → 通过，T02 → 部分通过（播放不中断待 4.2） |
 | 2026-11-05 | `0001-harmony-loop-kernel` | 任务 4.2 完成：`DecodeThreadTests` 扩至 12 用例 / 82 断言，T01 → 通过（拼接结果与原始 PCM 逐字节一致） |
+| 2026-11-05 | `0001-harmony-loop-kernel` | 任务 4.3 完成：新增 `LoopCounterTests`（7 用例 / 46 断言），T08 / T09 → 通过 |

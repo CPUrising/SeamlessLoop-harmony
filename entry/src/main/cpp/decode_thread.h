@@ -4,8 +4,11 @@
  * 职责（对应 design.md 决策 2 / 3）：
  * - 在自己的线程里持续从 AudioDecoder 读 PCM，写入 RingBuffer。
  * - FIFO 满时等待，绝不阻塞 OHAudio 回调线程。
+ * 循环跳转与计数：
  * - 循环开启时，解码位置到达 LoopEnd 就在本线程内 seek 回 LoopStart，
  *   因此 FIFO 里永远是「已拼接好的连续数据」，回调侧感知不到循环。
+ * - 每完成一次跳转，循环计数加一并通过回调上报（T08）；
+ *   关闭循环时不会发生跳转，因此也不会上报（T09）。
  * - 循环关闭时，到文件末尾停止解码。
  *
  * 为什么用轮询等待而不是条件变量：
@@ -30,6 +33,7 @@
 #include <vector>
 
 #include "audio_decoder.h"
+#include "loop_counter.h"
 #include "ring_buffer.h"
 
 namespace slh {
@@ -67,6 +71,18 @@ public:
 
     bool IsLooping() const;
 
+    // 循环事件回调：在解码线程上同步执行，参数为累计循环次数（从 1 开始）。
+    // 回调内不得做耗时操作；投递到 UI 线程由桥接层负责（任务 5.3）。
+    using LoopCallback = LoopCounter::Callback;
+    void SetLoopCallback(LoopCallback callback, void* userData);
+
+    // 累计循环次数（T08）。
+    int64_t LoopCount() const;
+
+    // 重置循环计数。seek 与循环点变更后必须调用（T08）；
+    // 任务 5.2 的 seekToSample 需要显式调用本方法。
+    void ResetLoopCount();
+
 private:
     void Run();
 
@@ -87,6 +103,9 @@ private:
     std::atomic<int64_t> loopStart_{0};
     std::atomic<int64_t> loopEnd_{0};
     std::atomic<bool> looping_{false};
+
+    // 循环计数与上报（T08 / T09）。
+    LoopCounter loopCounter_;
 
     // 解码暂存区，仅本线程访问，无需加锁。
     std::vector<int16_t> scratch_;

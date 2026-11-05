@@ -88,6 +88,8 @@ bool DecodeThread::SetLoopRange(int64_t startFrame, int64_t endFrame)
     }
     loopStart_.store(startFrame, std::memory_order_release);
     loopEnd_.store(endFrame, std::memory_order_release);
+    // 循环点变更后计数归零（T08）。
+    loopCounter_.Reset();
     return true;
 }
 
@@ -107,6 +109,21 @@ void DecodeThread::SetLooping(bool enabled)
 bool DecodeThread::IsLooping() const
 {
     return looping_.load(std::memory_order_acquire);
+}
+
+void DecodeThread::SetLoopCallback(LoopCallback callback, void* userData)
+{
+    loopCounter_.SetCallback(callback, userData);
+}
+
+int64_t DecodeThread::LoopCount() const
+{
+    return loopCounter_.Count();
+}
+
+void DecodeThread::ResetLoopCount()
+{
+    loopCounter_.Reset();
 }
 
 bool DecodeThread::LoopActive(int64_t* startFrame, int64_t* endFrame) const
@@ -157,6 +174,8 @@ void DecodeThread::Run()
                     reachedEnd_.store(true, std::memory_order_release);
                     break;
                 }
+                // 跳转成功才算一次循环（T08）；循环关闭时不会走到这里（T09）。
+                loopCounter_.IncrementAndNotify();
                 continue; // 重新按新位置计算本次可读帧数
             }
             // 不越过 LoopEnd 多读，否则 FIFO 里会出现本该被跳过的数据。
