@@ -10,6 +10,7 @@
 | 全项目 | 真机安装与启动 | — | 通过 | 2026-11-05 12:18 真机 MRT-AL10 实测：signed HAP `hdc install -r` 成功，`aa start` 启动成功，进程存活 |
 | `AudioOutput` | OHAudio 回调输出正弦波（G0 冒烟，任务 2.5） | — | 通过 | 2026-11-05 12:19 真机实测：听到 1 秒 440Hz 正弦波、无爆音；日志 `renderer started: 48000 Hz, 2 ch`，`total underrun bytes=0` |
 | `LoopStream` | T01 循环跳转 | `DecodeThreadTests` | 通过 | 2026-11-05 实测：12 用例 / 82 断言 / 0 失败；拼接输出与原始 PCM 逐字节一致 |
+| `LoopStream` | T07 关闭循环后整曲播放与结束上报 | `LoopStreamTests` | 通过 | 2026-11-05 实测：5 用例 / 36 断言 / 0 失败；结束回调恰好一次，结束后持续输出静音 |
 | `LoopConfig` | T02~T04 循环点校验与归一化 | `LoopConfigTests` | 通过 | 2026-11-05 实测：9 用例 / 74 断言 / 0 失败（T02 的「播放不中断」待运行时链路 4.4 / 5.3） |
 | `LoopConfig` | T05 / T06 运行时修改循环点 | `LoopRangeChangeTests` | 通过 | 2026-11-05 实测：5 用例 / 43 断言 / 0 失败；T05 的 200ms 听感条款待 6.3 |
 | `LoopCounter` | T08 / T09 循环计数与事件 | `LoopCounterTests` | 通过 | 2026-11-05 实测：7 用例 / 46 断言 / 0 失败；计数单调递增、改点后归零、关闭循环不上报 |
@@ -46,3 +47,4 @@
 | 2026-11-05 | T01 循环跳转（任务 4.2） | 通过 | `artifacts/verify-0001-harmony-loop-kernel-20261105-134253.log`；`testLoopJumpsBackToStart` 等 5 个新用例全通过 |
 | 2026-11-05 | T08 / T09 循环计数与事件上报（任务 4.3） | 通过 | `artifacts/verify-0001-harmony-loop-kernel-20261105-135348.log`；`LoopCounterTests` 7 用例 / 46 断言全通过 |
 | 2026-11-05 | T05 / T06 运行时修改循环点（任务 4.4） | 通过 | `artifacts/verify-0001-harmony-loop-kernel-20261105-182218.log`；`LoopRangeChangeTests` 5 用例 / 43 断言全通过；T05 的听感条款仍待 6.3 |
+| 2026-11-05 | T07 关闭循环后的整曲播放与结束上报（任务 4.5） | 通过 | `artifacts/verify-0001-harmony-loop-kernel-20261105-183703.log`；`LoopStreamTests` 5 用例 / 36 断言全通过 |

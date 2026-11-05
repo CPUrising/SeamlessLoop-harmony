@@ -6,15 +6,15 @@
 |---|---|
 | change id | `0001-harmony-loop-kernel` |
 | 执行人 | AI 智能体（TRAE） |
-| 执行时间 | 2026-11-05 18:22（最近一次） |
+| 执行时间 | 2026-11-05 18:37（最近一次） |
 | 机器 / 系统 | Windows 11（开发机） |
 | 工具链版本 | OpenSpec CLI 1.14.3；CMake 4.2.3；MSVC 19.44.35228.0；Python 3.14 + numpy 2.5.3；ffmpeg N-122110；DevEco Studio 26.0.0（build DS-261.23567.138.36.2600865）；hvigor 6.26.9 |
 | 运行环境 | HarmonyOS SDK 26.0.0.105（apiVersion 26，Release）；hdc 3.2.0f；**真机在线（MRT-AL10，序列号 5KTUT25424016774，API 26，系统 7.0.0.111(SP12C00E111R5P2)）** |
 | 命令 | `powershell -File scripts/verify.ps1 --change 0001-harmony-loop-kernel` |
-| 日志 | `artifacts/verify-0001-harmony-loop-kernel-20261105-182218.log` |
+| 日志 | `artifacts/verify-0001-harmony-loop-kernel-20261105-183703.log` |
 | 结果包 | `fixtures/synthetic/` 3 个音频 + `fixtures/manifest.json`；`entry/build/default/outputs/default/entry-default-signed.hap`（3 364 578 B，含 `libs/arm64-v8a/libentry.so`、`libs/x86_64/libentry.so`） |
 
-**本次验证范围**：任务 1.1、2.2~2.5、3.1~3.5、4.1~4.4 已完成。本机单元测试 7 套件 / 1007 断言全通过；真机 G0 冒烟（2.5）已实测通过。任务 6.2 / 6.3 真机听测仍阻塞（循环播放链路未完全接通 UI）。功能场景 T07、T10~T11、T13、T15~T16 仍未实现；T05 的 200ms 听感条款待 6.3。
+**本次验证范围**：任务 1.1、2.2~2.5、3.1~3.5、4.1~4.5 已完成。本机单元测试 8 套件 / 1043 断言全通过；真机 G0 冒烟（2.5）已实测通过。任务 6.2 / 6.3 真机听测仍阻塞（循环播放链路未完全接通 UI）。功能场景 T10~T11、T13、T15~T16 仍未实现；T05 的 200ms 听感条款待 6.3。
 
 ## 2. 需求覆盖
 
@@ -26,7 +26,7 @@
 | Sample-Accurate Loop Jump | T04 | `LoopConfigTests.testDegenerateRangeRejected` | **PASS** | `End == Start`、`End < Start`、`End=1 < Start` 三种退化形态均被拒绝，原区间不变，不进入空区间 |
 | Loop Configuration At Runtime | T05 | `LoopRangeChangeTests.testChangeOutsideRangeSeeks` + `testChangeOutsideRangeFlushesBufferedAudio` + 真机听测 | **部分通过** | 改点后跳转落点与 FIFO 清空已实测；200ms 无感中断属听感条款，待任务 6.3 |
 | Loop Configuration At Runtime | T06 | `LoopRangeChangeTests.testChangeInsideRangeKeepsPosition` | **PASS** | 位置仍在新区间内时不触发清空与跳转，解码持续推进 |
-| Loop Configuration At Runtime | T07 | `LoopStreamTests.testLoopDisabledStopsAtEnd` | NOT RUN | 代码未实现（任务 4.5） |
+| Loop Configuration At Runtime | T07 | `LoopStreamTests.testLoopDisabledStopsAtEnd` | **PASS** | 循环播放中关闭循环后不再跳转，播到末尾停止推进，结束回调恰好触发一次；排空后写回调持续输出静音 |
 | Loop Cycle Reporting | T08 | `LoopCounterTests.testCounterIncrementsAndResets` | **PASS** | 真实循环跳转下计数与回调累计值一致（1,2,3…单调递增）；循环点变更后归零；`ResetLoopCount()` 后可重新从 1 计数 |
 | Loop Cycle Reporting | T09 | `LoopCounterTests.testNoEventWhenDisabled` | **PASS** | 设置区间但不开启循环，整曲播到末尾，`LoopCount == 0` 且回调一次未触发 |
 | Playback Progress Reporting | T10 | `ProgressTests.testProgressContinuousAcrossLoop` | NOT RUN | 代码未实现 |
@@ -45,7 +45,7 @@
 | 规范严格校验 | `openspec validate --all --strict` | **PASS**（1 passed, 0 failed） |
 | 合成 fixture 生成 | `python scripts/make-fixtures.py` | **PASS**（3 文件 + manifest，见下） |
 | 合成 fixture 相位连续性 | 离线 numpy 检查 | **PASS**（见 D5 说明） |
-| 全量单元测试 | `scripts/verify.ps1 --scope unit` | **PASS**（7 套件 / 1007 断言 / 0 失败） |
+| 全量单元测试 | `scripts/verify.ps1 --scope unit` | **PASS**（8 套件 / 1043 断言 / 0 失败） |
 | HAP 构建 | `hvigorw --mode module -p product=default --no-daemon assembleHap` | **PASS**（BUILD SUCCESSFUL，产出 signed HAP） |
 | Native 库链接 | `llvm-readelf -d libentry.so` | **PASS**（NEEDED 含 `libohaudio.so`、`libhilog_ndk.z.so`、`libace_napi.z.so`） |
 | 既有通过项是否回退 | 本变更为首次变更，无既有基线 | N/A |
@@ -162,6 +162,19 @@
 | 数据新鲜度防护 | 解码线程记录读前 `FlushRequestCount()` 代次；解码耗时期间若发生改点/seek，该块数据整块丢弃，避免残留旧音频（本任务修复的实现缺陷） |
 | HAP 构建（回归） | BUILD SUCCESSFUL；运行时改点逻辑已编入 `libentry.so` |
 
+### 任务 4.5 实测证据（2026-11-05 18:37）
+
+| 检查项 | 实测结果 |
+|---|---|
+| `LoopStreamTests` | **PASS**：5 用例 / 36 断言 / 0 失败（新增第 8 个测试套件） |
+| T07 关闭循环后停止推进 | 循环 `[33075, 53075)` 播到 `LoopCount >= 2` 后调用 `SetLooping(false)`，随后不再跳转，解码推进到文件末尾并置 `ReachedEnd` |
+| T07 结束回调 | 关闭循环后结束回调恰好触发 1 次；`Stop()` 之后再等 200ms 仍为 1 次，不重复上报 |
+| T07 循环计数冻结 | 关闭循环后 `LoopCount` 不再变化（100ms 内保持同一值） |
+| T07 静音输出 | 排空 FIFO 后 `ReadOrSilence` 返回有效字节 0，整个 1024 字节缓冲全为 0——写回调持续输出静音而非残留数据 |
+| 循环期间无结束事件 | 循环中等到 `LoopCount >= 3` 仍未触发任何结束回调，`ReachedEnd == false` |
+| 未登记回调 | 无结束回调时到达末尾不崩溃，`ReachedEnd` 正常置位 |
+| HAP 构建（回归） | BUILD SUCCESSFUL；结束上报逻辑已编入 `libentry.so` |
+
 ### 测试过程中发现并修正的缺陷
 
 | 编号 | 缺陷 | 处理 |
@@ -213,7 +226,7 @@
 - [x] 需修复后复验（Build 阶段进行中，非归档态）
 - [ ] 需人类决策
 
-**说明**：Plan 阶段产物（proposal / design / tasks / delta spec）已完成并通过严格校验；合成 fixture 已生成并通过相位连续性数值检查；HAP 构建、真机安装、启动与 G0 正弦波听测均已实测通过。当前已完成任务 1.1、2.2~2.5、3.1~3.5、4.1~4.4，下一步为任务 4.5。任务 6.2 / 6.3 的循环听测需等进度与控制接口及最小界面（4.5~6.1）完成后再执行。
+**说明**：Plan 阶段产物（proposal / design / tasks / delta spec）已完成并通过严格校验；合成 fixture 已生成并通过相位连续性数值检查；HAP 构建、真机安装、启动与 G0 正弦波听测均已实测通过。当前已完成任务 1.1、2.2~2.5、3.1~3.5、4.1~4.5（循环核心全部完成），下一步为任务 5.1。任务 6.2 / 6.3 的循环听测需等进度与控制接口及最小界面（5.1~6.1）完成后再执行。
 
 已确认的决策：HarmonyOS SDK **26.0.0**、真实素材由用户提供、包名 `com.cpu.seamlessloopharmony`。
 

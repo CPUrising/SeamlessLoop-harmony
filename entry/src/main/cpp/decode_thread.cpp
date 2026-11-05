@@ -44,6 +44,7 @@ bool DecodeThread::Start()
 
     stop_.store(false, std::memory_order_release);
     reachedEnd_.store(false, std::memory_order_release);
+    endNotified_.store(false, std::memory_order_release);
     decodedFrames_.store(0, std::memory_order_release);
     decodedPosition_.store(decoder_->CurrentFrame(), std::memory_order_release);
     running_.store(true, std::memory_order_release);
@@ -163,6 +164,26 @@ void DecodeThread::RequestSeek(int64_t frame)
     pendingSeek_.store(frame, std::memory_order_release);
 }
 
+void DecodeThread::SetEndCallback(EndCallback callback, void* userData)
+{
+    // 先存 userData 再存回调，避免回调先可见、数据后可见的窗口。
+    endUserData_.store(userData, std::memory_order_release);
+    endCallback_.store(callback, std::memory_order_release);
+}
+
+void DecodeThread::NotifyEnd()
+{
+    reachedEnd_.store(true, std::memory_order_release);
+    // 只上报一次：重复到达末尾（例如 seek 回前面又播完）不再触发。
+    if (endNotified_.exchange(true, std::memory_order_acq_rel)) {
+        return;
+    }
+    const EndCallback callback = endCallback_.load(std::memory_order_acquire);
+    if (callback != nullptr) {
+        callback(endUserData_.load(std::memory_order_acquire));
+    }
+}
+
 bool DecodeThread::LoopActive(int64_t* startFrame, int64_t* endFrame) const
 {
     if (!looping_.load(std::memory_order_acquire)) {
@@ -247,8 +268,9 @@ void DecodeThread::Run()
 
         const int64_t got = decoder_->ReadFrames(scratch_.data(), frames);
         if (got <= 0) {
-            // 到达文件末尾。循环开启时不应走到这里（LoopEnd 处已跳转）。
-            reachedEnd_.store(true, std::memory_order_release);
+            // 到达文件末尾（循环关闭时的正常结束）：停止推进并上报（T07）。
+            // 线程退出后写回调继续输出静音，音频流不中断。
+            NotifyEnd();
             break;
         }
         // 发布解码位置快照，供跨线程估算播放位置（T05 / T06 与任务 5.1）。

@@ -9,7 +9,8 @@
  *   因此 FIFO 里永远是「已拼接好的连续数据」，回调侧感知不到循环。
  * - 每完成一次跳转，循环计数加一并通过回调上报（T08）；
  *   关闭循环时不会发生跳转，因此也不会上报（T09）。
- * - 循环关闭时，到文件末尾停止解码。
+ * - 循环关闭时，到文件末尾停止解码，并通过结束回调通知业务层（T07）；
+ *   此后写回调只输出静音，音频流保持不中断。
  *
  * 为什么用轮询等待而不是条件变量：
  * 消费者是 OHAudio 的实时回调线程，回调内不允许加锁。若用条件变量，
@@ -84,6 +85,10 @@ public:
     // 任务 5.2 的 seekToSample 需要显式调用本方法。
     void ResetLoopCount();
 
+    // 播放结束回调（T07）：在解码线程上同步执行，且整个生命周期只触发一次。
+    using EndCallback = void (*)(void* userData);
+    void SetEndCallback(EndCallback callback, void* userData);
+
 private:
     void Run();
 
@@ -97,6 +102,9 @@ private:
     // 请求解码线程跳转到指定帧。实际 seek 在解码线程内完成，
     // 避免在调用线程与解码线程之间并发操作同一个解码器。
     void RequestSeek(int64_t frame);
+
+    // 标记到达末尾并上报（只触发一次）。
+    void NotifyEnd();
 
     AudioDecoder* decoder_ = nullptr;
     RingBuffer* ring_ = nullptr;
@@ -122,6 +130,11 @@ private:
     // 解码线程发布的最新解码位置。CurrentFrame() 不是原子的，
     // 因此跨线程只读这个快照，避免数据竞争。
     std::atomic<int64_t> decodedPosition_{0};
+
+    // 播放结束上报（T07）。回调只触发一次，之后 EndNotified() 为 true。
+    std::atomic<EndCallback> endCallback_{nullptr};
+    std::atomic<void*> endUserData_{nullptr};
+    std::atomic<bool> endNotified_{false};
 
     // 解码暂存区，仅本线程访问，无需加锁。
     std::vector<int16_t> scratch_;
