@@ -7,8 +7,8 @@
 | 模块 | 应测项 | 测试文件 | 状态 | 备注 |
 |---|---|---|---|---|
 | 全项目 | HAP 构建 | — | 通过 | 2026-11-04 实测 `assembleHap` BUILD SUCCESSFUL（unsigned），见 `docs/reference-env.md` |
-| 全项目 | 真机安装与启动 | — | 阻塞 | 2026-11-05 真机 MRT-AL10 曾接入，但安装失败：`code:9568320 / no signature file`；当前真机已断开，且签名未配置 |
-| `AudioOutput` | OHAudio 回调输出正弦波（G0 冒烟，任务 2.5） | — | 阻塞 | 代码已实现、HAP 构建通过、`libentry.so` 已链接 `libohaudio.so`；仍缺真机听测 |
+| 全项目 | 真机安装与启动 | — | 通过 | 2026-11-05 12:18 真机 MRT-AL10 实测：signed HAP `hdc install -r` 成功，`aa start` 启动成功，进程存活 |
+| `AudioOutput` | OHAudio 回调输出正弦波（G0 冒烟，任务 2.5） | — | 通过 | 2026-11-05 12:19 真机实测：听到 1 秒 440Hz 正弦波、无爆音；日志 `renderer started: 48000 Hz, 2 ch`，`total underrun bytes=0` |
 | `LoopStream` | T01 循环跳转 | `LoopStreamTests` | 未执行 | 代码未实现 |
 | `LoopConfig` | T02~T06 循环点校验与运行时变更 | `LoopConfigTests` | 未执行 | 代码未实现 |
 | `LoopCounter` | T08 / T09 循环计数与事件 | `LoopCounterTests` | 未执行 | 代码未实现 |
@@ -22,9 +22,9 @@
 | `DecodeThread` | 持续解码、FIFO 满等待、停止语义 | `DecodeThreadTests` | 通过 | 2026-11-05 实测：7 用例 / 34 断言 / 0 失败；解出帧数与 manifest 完全一致 |
 | `RingBuffer` | T17 第 2 条：缓冲恢复后自动继续播放 | `RingBufferTests` | 通过 | 2026-11-05 实测：`testRecoversAfterUnderrun` + `testRecoversAfterUnderrunAcrossWrap`（含环绕边界）均通过 |
 | `AudioOutput` | T17 第 3 条：欠载事件回调上报 | — | 未执行 | **代码未接线**：`SetUnderrunCallback` 已实现但全仓库无调用点，上报链路不通。归属任务 5.3（napi 暴露事件） |
-| 听感验收 | T15 循环边界无静音间隙 | 人工听测 | 阻塞 | 需真机；合成 fixture 已就绪 |
-| 听感验收 | T16 循环边界无爆音 | 人工听测 | 阻塞 | 需真机；合成 fixture 相位连续性已数值验证 |
-| 听感验收 | T05 播放中改循环点无明显中断 | 人工听测 | 阻塞 | 需真机 |
+| 听感验收 | T15 循环边界无静音间隙 | 人工听测 | 阻塞 | 真机在线，但循环播放链路（任务 4.2~6.1）未实现，暂不可测 |
+| 听感验收 | T16 循环边界无爆音 | 人工听测 | 阻塞 | 真机在线；合成 fixture 相位连续性已数值验证；待 6.2 |
+| 听感验收 | T05 播放中改循环点无明显中断 | 人工听测 | 阻塞 | 真机在线；待任务 4.4 与 6.3 |
 | 真实素材 | `fixtures/real/` 真实曲目听测 | 人工听测 | 阻塞 | 待用户提供素材与循环点数值 |
 
 ## 已关闭
@@ -40,3 +40,5 @@
 | 2026-11-05 | `AudioOutputLogicTests`（写回调规划） | 通过 | [verify/0001](verify/0001-harmony-loop-kernel.md) 第 3 节；`artifacts/verify-0001-harmony-loop-kernel-20261105-103408.log` |
 | 2026-11-05 | `DecodeThreadTests`（解码线程） | 通过 | 同上；7 用例 / 34 断言 / 0 失败 |
 | 2026-11-05 | `RingBufferTests`（T17 第 2 条：欠载后恢复继续播放） | 通过 | `artifacts/verify-0001-harmony-loop-kernel-20261105-112403.log`；含环绕边界用例 |
+| 2026-11-05 | 真机安装与启动（signed HAP） | 通过 | [verify/0001](verify/0001-harmony-loop-kernel.md) 第 3 节「任务 2.5 真机 G0 冒烟」；`hdc` 输出 `install bundle successfully`，`aa start ability successfully` |
+| 2026-11-05 | OHAudio 正弦波真机发声（任务 2.5 / G0） | 通过 | 同上；人类听测判定「清晰 1 秒正弦音，无爆音」，日志 `renderer started: 48000 Hz, 2 ch`、`total underrun bytes=0` |

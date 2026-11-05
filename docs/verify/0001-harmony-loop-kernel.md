@@ -9,12 +9,12 @@
 | 执行时间 | 2026-11-05 11:53（最近一次） |
 | 机器 / 系统 | Windows 11（开发机） |
 | 工具链版本 | OpenSpec CLI 1.14.3；CMake 4.2.3；MSVC 19.44.35228.0；Python 3.14 + numpy 2.5.3；ffmpeg N-122110；DevEco Studio 26.0.0（build DS-261.23567.138.36.2600865）；hvigor 6.26.9 |
-| 运行环境 | HarmonyOS SDK 26.0.0.105（apiVersion 26，Release）；hdc 3.2.0f；**真机曾接入（MRT-AL10，API 26），当前已断开** |
+| 运行环境 | HarmonyOS SDK 26.0.0.105（apiVersion 26，Release）；hdc 3.2.0f；**真机在线（MRT-AL10，序列号 5KTUT25424016774，API 26，系统 7.0.0.111(SP12C00E111R5P2)）** |
 | 命令 | `powershell -File scripts/verify.ps1 --change 0001-harmony-loop-kernel` |
 | 日志 | `artifacts/verify-0001-harmony-loop-kernel-20261105-115309.log` |
-| 结果包 | `fixtures/synthetic/` 3 个音频 + `fixtures/manifest.json`；`entry/build/default/outputs/default/entry-default-unsigned.hap`（含 `libs/arm64-v8a/libentry.so`、`libs/x86_64/libentry.so`） |
+| 结果包 | `fixtures/synthetic/` 3 个音频 + `fixtures/manifest.json`；`entry/build/default/outputs/default/entry-default-signed.hap`（3 364 578 B，含 `libs/arm64-v8a/libentry.so`、`libs/x86_64/libentry.so`） |
 
-**本次验证范围**：任务 2.2~2.4、3.1~3.5、4.1 全部完成。本机单元测试 5 套件 / 870 断言全通过。任务 2.5 与 6.2 / 6.3 真机听测仍阻塞（真机已断开）。功能场景 T01、T05~T11、T13、T15~T16 仍未实现。
+**本次验证范围**：任务 1.1、2.2~2.5、3.1~3.5、4.1 已完成。本机单元测试 5 套件 / 870 断言全通过；真机 G0 冒烟（2.5）已实测通过。任务 6.2 / 6.3 真机听测仍阻塞（循环播放链路未实现）。功能场景 T01、T05~T11、T13、T15~T16 仍未实现。
 
 ## 2. 需求覆盖
 
@@ -58,7 +58,19 @@
 | `libentry.so` 动态依赖 | `libace_napi.z.so`、`libohaudio.so`、`libhilog_ndk.z.so`、`libc++_shared.so`、`libc.so` |
 | HAP 内 native 产物 | `libs/arm64-v8a/libentry.so`（55240 B）、`libs/x86_64/libentry.so`（55664 B） |
 | ArkTS 侧 napi 导入 | `CompileArkTS` Finished；仅一条 SDK 提示「module for 'libentry.so' is not verified」（后续 SDK 才启用校验，非错误） |
-| 正弦波实际发声 | **NOT RUN**（无真机，任务 2.5 阻塞） |
+| 正弦波实际发声 | **PASS**（2026-11-05 12:19 真机实测，见下节「任务 2.5」） |
+
+### 任务 2.5 真机 G0 冒烟（2026-11-05 12:18~12:20）
+
+| 检查项 | 实测结果 |
+|---|---|
+| 设备 | HUAWEI MRT-AL10，序列号 `5KTUT25424016774`，`const.ohos.apiversion = 26`，`MRT-AL10 7.0.0.111(SP12C00E111R5P2)` |
+| 安装 | `hdc install -r entry-default-signed.hap` → `install bundle successfully` |
+| 启动 | `aa start -a EntryAbility -b com.cpu.seamlessloopharmony` → `start ability successfully`，进程存活（pid 31292） |
+| 渲染器启动 | `SLH_AudioOutput: renderer started: 48000 Hz, 2 ch, 440 Hz tone fallback`；`SLH_Index: startTone ret=0` |
+| 渲染器停止 | `SLH_AudioOutput: renderer stopped, total underrun bytes=0`（连续 5 次启停均为 0 欠载） |
+| 听感 | 人类听测判定：**清晰 1 秒 440Hz 正弦音，无爆音** |
+| 结论 | 任务 2.5 **通过**；OHAudio 构建 → 链接 → 真机发声链路闭环 |
 
 ### 任务 3.1 / 3.2 / 3.3 实测证据（2026-11-05 10:20）
 
@@ -142,15 +154,15 @@
 
 | 编号 | 偏差 | 等级 | 处理 |
 |---|---|---|---|
-| D1 | 本机无 HarmonyOS 真机连接（`hdc list targets` 为空），全部真机安装与听测任务阻塞 | **阻断** | DevEco Studio / SDK / hdc 已就绪，HAP 可构建；登记至 `docs/verification-debt.md`，待真机接入后继续 |
-| D2 | `compatibleSdkVersion` 已设为 26.0.0，可安装设备范围受限 | 严重 | 待真机系统版本确认后决定是否下调；`targetSdkVersion` 保持 26.0.0 |
+| D1 | 真机曾断开（`hdc list targets` 为空），真机安装与听测无法执行 | 已解除 | 2026-11-05 真机 MRT-AL10 重新接入；安装、启动与 G0 正弦波听测均通过。循环听测仍待功能实现 |
+| D2 | `compatibleSdkVersion` 已设为 26.0.0，可安装设备范围受限 | 一般 | 真机 `const.ohos.apiversion = 26` 已确认一致，维持不下调；若后续需覆盖更低版本设备，另开 change |
 | D3 | `fixtures/real/` 尚无真实素材，真实场景听测无法执行 | 严重 | 任务 1.3 待用户提供；已给出清单与获取方式 |
 | D4 | 音乐文件获取方式（Picker + 持久化 URI vs 沙箱导入）未定 | 一般 | 本变更用固定沙箱路径绕过；已写入 `design.md` Open Questions |
 | D5 | 合成 fixture 的循环边界突变虽小于循环体波动，但**不为零**（比值 0.50） | 一般 | 属相位近似连续（包络为 2 周期正弦，采样点落在离散步长上）；T16 判据已改为相对比值而非绝对值，避免误判 |
 | D6 | MP3 解码后的实际采样位置未测，`manifest.json` 中 MP3 条目缺少 loop_start/loop_end | 一般 | 待解码器实现后实测回填；这本身就是任务 3.2 的验证内容 |
-| D7 | 任务 2.5（G0 冒烟听测）未执行：无真机，无法确认 440Hz 正弦波实际发声与无爆音 | **阻断** | 已登记 `docs/verification-debt.md`；代码与构建链路已就绪，待真机接入后执行 |
+| D7 | 任务 2.5（G0 冒烟听测）未执行：无真机，无法确认 440Hz 正弦波实际发声与无爆音 | 已解除 | 2026-11-05 12:19 真机实测：听到清晰 1 秒正弦音、无爆音；`renderer started: 48000 Hz, 2 ch`，`total underrun bytes=0` |
 | D8 | `scripts/verify.ps1` 的构建步骤原用 hvigor daemon，本机会挂起（无输出、不退出） | 一般 | 已改为 `--no-daemon`（12~13 秒完成），属验证入口可复现性修正，不涉及产品代码。**注：该次挂起未复现、根因未定位**，`--no-daemon` 是官方降级方式，同时让验证入口不依赖常驻进程状态 |
-| D9 | 真机安装失败：`code:9568320 / no signature file` | **阻断** | `build-profile.json5` 的 `signingConfigs` 为空但 product 引用了 `default`；本机无任何签名材料。需在 DevEco 中配置自动签名（依赖真机在线读取 UDID），当前真机已断开 |
+| D9 | 真机安装失败：`code:9568320 / no signature file` | 已解除 | 人类已在根 `build-profile.json5` 配置 `signingConfigs`；2026-11-05 12:18 signed HAP 安装成功 |
 | D10 | `wmic.exe` 在 Win11 已移除，hvigor 的 daemon 进程探测回退到 `powershell Get-CimInstance`，每次约 1.36 秒 | 一般 | 属 hvigor 工具链行为，不影响本工程代码；registry 条目超过 8 条时会触发批量探测，建议定期 `hvigorw --stop-daemon` |
 
 ## 5. 结论
@@ -159,10 +171,10 @@
 - [x] 需修复后复验（Build 阶段进行中，非归档态）
 - [ ] 需人类决策
 
-**说明**：Plan 阶段产物（proposal / design / tasks / delta spec）已完成并通过严格校验；合成 fixture 已生成并通过相位连续性数值检查；HAP 构建已实测通过。人类已批准进入 Build 阶段，当前已完成任务 2.2~2.4、3.1~3.5 与 4.1，下一步为任务 4.2。任务 2.5 / 6.2 / 6.3 的真机听测在真机重新接入前无法执行（签名已配置，产物为 signed HAP）。
+**说明**：Plan 阶段产物（proposal / design / tasks / delta spec）已完成并通过严格校验；合成 fixture 已生成并通过相位连续性数值检查；HAP 构建、真机安装、启动与 G0 正弦波听测均已实测通过。当前已完成任务 1.1、2.2~2.5、3.1~3.5 与 4.1，下一步为任务 4.2。任务 6.2 / 6.3 的循环听测需等循环播放链路与最小界面（4.2~6.1）完成后再执行。
 
 已确认的决策：HarmonyOS SDK **26.0.0**、真实素材由用户提供、包名 `com.cpu.seamlessloopharmony`。
 
-真机实测环境（2026-11-05 曾接入）：HUAWEI **MRT-AL10**，`OpenHarmony-7.0.0.111`，`const.ohos.apiversion = 26`，与 `compatibleSdkVersion 26.0.0` 一致。
+真机实测环境：HUAWEI **MRT-AL10**（序列号 `5KTUT25424016774`），`OpenHarmony-7.0.0.111(SP12C00E111R5P2)`，`const.ohos.apiversion = 26`，与 `compatibleSdkVersion 26.0.0` 一致；签名已配置，signed HAP 安装成功。
 
-仍阻塞：真机连接（当前 `hdc list targets` 为空）、签名配置（D9）、`fixtures/real/` 素材。
+仍未完成：`fixtures/real/` 真实素材（任务 1.3）；循环边界听测（T15 / T16 / T05，随 6.2 / 6.3）。

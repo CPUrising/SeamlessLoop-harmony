@@ -5,7 +5,7 @@
 
 ## 1. 规范与环境准备
 
-- [ ] 1.1 冻结 `docs/reference-env.md`：DevEco 26.0.0 实际安装版本、真机型号与系统版本、`compatibleSdkVersion` 下限（SDK 与工具链已冻结，仅剩真机项）
+- [x] 1.1 冻结 `docs/reference-env.md`：DevEco 26.0.0 实际安装版本、真机型号与系统版本、`compatibleSdkVersion` 下限（真机 MRT-AL10 / API 26 / OpenHarmony 7.0.0.111 已回填）
 - [x] 1.2 写 `scripts/make-fixtures.py`，生成 `fixtures/synthetic/` 三个相位连续样本与 `manifest.json`
 - [ ] 1.3 收集 `fixtures/real/` 素材并填写清单：1 首带已知循环点的整曲（或对应 `.db`）、1 组 A/B 对
 - [x] 1.4 建立 `scripts/verify.ps1`（唯一验证入口），支持 `--scope unit` 与 `--change`
@@ -16,7 +16,7 @@
 - [x] 2.2 配置 `entry/src/main/cpp/CMakeLists.txt`，链接 `libohaudio.so` 与 `libhilog_ndk.z.so`
 - [x] 2.3 实现 `AudioOutput`：构建 OHAudio renderer，写回调输出 1 秒 440Hz 正弦波
 - [x] 2.4 napi 桥接暴露 `startTone() / stopTone()`，ArkTS 页面加一个按钮触发
-- [ ] 2.5 真机验证：点击按钮听到 1 秒正弦波，无爆音（G0 冒烟）
+- [x] 2.5 真机验证：点击按钮听到 1 秒正弦波，无爆音（G0 冒烟；2026-11-05 12:19 MRT-AL10 实测）
 
 ## 3. 解码与连续播放
 
