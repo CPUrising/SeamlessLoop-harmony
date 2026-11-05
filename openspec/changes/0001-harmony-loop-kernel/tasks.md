@@ -37,7 +37,7 @@
 ## 5. 进度与控制接口
 
 - [x] 5.1 实现进度计算：解码位置 − FIFO 剩余字节，含 `hasLoopedSinceSeek` 回绕补偿（覆盖 T10 / T11）
-- [ ] 5.2 实现 `play / pause / stop / seekToSample`，seek 时清空 FIFO 并重置补偿标志（覆盖 T13 / T14）
+- [x] 5.2 实现 `play / pause / stop / seekToSample`，seek 时清空 FIFO 并重置补偿标志（覆盖 T13 / T14）
 - [ ] 5.3 napi 桥接完整暴露 API 与事件（`ThreadSafeFunction`）
 
 ## 6. 最小界面与真机验收

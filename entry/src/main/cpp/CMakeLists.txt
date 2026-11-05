@@ -19,6 +19,7 @@ set(SLH_CORE_SOURCES
     ring_buffer.cpp
     decode_thread.cpp
     loop_config.cpp
+    playback_engine.cpp
     third_party/dr_libs_impl.c)
 
 # ---------------------------------------------------------------------------
@@ -118,6 +119,16 @@ if(BUILD_TESTS AND NOT CMAKE_SYSTEM_NAME STREQUAL "OHOS")
     target_compile_definitions(progress_tests PRIVATE
         FIXTURE_DIR="${NATIVERENDER_ROOT_PATH}/../../../../fixtures/synthetic")
     add_test(NAME ProgressTests COMMAND progress_tests)
+
+    add_executable(transport_tests
+        tests/transport_test.cpp
+        ${SLH_CORE_SOURCES})
+    target_include_directories(transport_tests PRIVATE
+        ${NATIVERENDER_ROOT_PATH}
+        ${NATIVERENDER_ROOT_PATH}/tests)
+    target_compile_definitions(transport_tests PRIVATE
+        FIXTURE_DIR="${NATIVERENDER_ROOT_PATH}/../../../../fixtures/synthetic")
+    add_test(NAME TransportTests COMMAND transport_tests)
 
     return()
 endif()

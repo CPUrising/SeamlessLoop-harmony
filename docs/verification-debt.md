@@ -17,8 +17,8 @@
 | `Progress` | T10 / T11 进度连续性与回绕补偿 | `ProgressTests` | 通过 | 2026-11-05 实测：8 用例 / 45 断言 / 0 失败；真实循环 3 次以上进度单调不减 |
 | `Decoder` | T12 加载与格式上报 | `DecoderTests` | 通过 | 2026-11-05 实测：10 用例 / 50 断言 / 0 失败，含 WAV 单双声道与 MP3 |
 | `Decoder` | MP3 解码后实际采样位置与 encoder delay 处理 | `DecoderTests` | 通过 | `drmp3_get_pcm_frame_count` 已扣除 delay/padding，实测总帧数落在 (118000, 124000)；`manifest.json` 仍待回填精确值 |
-| `Transport` | T13 暂停恢复 | `TransportTests` | 未执行 | 代码未实现（任务 5.2） |
-| `Transport` | T14 按采样点跳转（解码侧 clamp） | `DecoderTests` | 部分通过 | clamp 已实测；FIFO 清空待任务 5.2 |
+| `Transport` | T13 暂停恢复 | `TransportTests` | 通过 | 2026-11-05 实测：10 用例 / 84 断言 / 0 失败；恢复偏差 < 100ms |
+| `Transport` | T14 按采样点跳转（含 FIFO 清空） | `TransportTests` | 通过 | clamp 与播放中 seek 清空均已实测；`FlushBuffer` 走消费者应用路径 |
 | `RingBuffer` | T17 第 1 条：欠载时继续输出静音填充 | `RingBufferTests` | 通过 | 2026-11-05 实测：7 用例 / 103 断言 / 0 失败 |
 | `AudioOutput` | 写回调数据规划（帧数换算 / 欠载判定 / 非对齐防护） | `AudioOutputLogicTests` | 通过 | 2026-11-05 实测：9 用例 / 528 断言 / 0 失败 |
 | `DecodeThread` | 持续解码、FIFO 满等待、停止语义 | `DecodeThreadTests` | 通过 | 2026-11-05 实测：7 用例 / 34 断言 / 0 失败；解出帧数与 manifest 完全一致 |
@@ -49,3 +49,4 @@
 | 2026-11-05 | T05 / T06 运行时修改循环点（任务 4.4） | 通过 | `artifacts/verify-0001-harmony-loop-kernel-20261105-182218.log`；`LoopRangeChangeTests` 5 用例 / 43 断言全通过；T05 的听感条款仍待 6.3 |
 | 2026-11-05 | T07 关闭循环后的整曲播放与结束上报（任务 4.5） | 通过 | `artifacts/verify-0001-harmony-loop-kernel-20261105-183703.log`；`LoopStreamTests` 5 用例 / 36 断言全通过 |
 | 2026-11-05 | T10 / T11 进度连续性与回绕补偿（任务 5.1） | 通过 | `artifacts/verify-0001-harmony-loop-kernel-20261105-184809.log`；`ProgressTests` 8 用例 / 45 断言全通过 |
+| 2026-11-05 | T13 / T14 播放控制与按采样点跳转（任务 5.2） | 通过 | `artifacts/verify-0001-harmony-loop-kernel-20261105-185518.log`；`TransportTests` 10 用例 / 84 断言全通过 |

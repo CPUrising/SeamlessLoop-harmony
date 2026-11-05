@@ -19,8 +19,8 @@
 | T10 | 进度在循环边界保持连续 | 同上 → `T10` | `ProgressTests.testProgressMonotonicAcrossRealLoops` | 通过 |
 | T11 | 进度在 Intro 阶段不误补偿 | 同上 → `T11` | `ProgressTests.testNoCompensationDuringIntro` | 通过 |
 | T12 | 加载后可播放 | 同上 → `T12` | `DecoderTests.testLoadReportsFormat` | 通过 |
-| T13 | 暂停后恢复不丢位置 | 同上 → `T13` | `TransportTests.testPauseResumeKeepsPosition` | 未实现 |
-| T14 | 按采样点跳转 | 同上 → `T14` | `TransportTests.testSeekClampsAndAligns` | 部分通过（解码侧 clamp 已通过；FIFO 清空待 5.2） |
+| T13 | 暂停后恢复不丢位置 | 同上 → `T13` | `TransportTests.testPauseResumeKeepsPosition` | 通过 |
+| T14 | 按采样点跳转 | 同上 → `T14` | `TransportTests.testSeekClampsAndAligns` + `testSeekWhilePlayingFlushesBuffer` | 通过 |
 | T15 | 循环边界无静音间隙 | 同上 → `T15` | 离线波形分析 + 真机听测 | 未实现 |
 | T16 | 循环边界无爆音 | 同上 → `T16` | 离线波形分析 + 真机听测 | 未实现 |
 | T17 | 缓冲欠载可恢复 | 同上 → `T17` | `RingBufferTests` + `AudioOutputLogicTests` | 部分通过（第 1、2 条已通过；第 3 条事件上报未接线） |
@@ -42,3 +42,4 @@
 | 2026-11-05 | `0001-harmony-loop-kernel` | 任务 4.4 完成：新增 `LoopRangeChangeTests`（5 用例 / 43 断言），T06 → 通过，T05 → 部分通过（200ms 听感条款待 6.3） |
 | 2026-11-05 | `0001-harmony-loop-kernel` | 任务 4.5 完成：新增 `LoopStreamTests`（5 用例 / 36 断言），T07 → 通过 |
 | 2026-11-05 | `0001-harmony-loop-kernel` | 任务 5.1 完成：新增 `progress.h` 与 `ProgressTests`（8 用例 / 45 断言），T10 / T11 → 通过 |
+| 2026-11-05 | `0001-harmony-loop-kernel` | 任务 5.2 完成：新增 `PlaybackEngine` 与 `TransportTests`（10 用例 / 84 断言），T13 / T14 → 通过 |

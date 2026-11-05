@@ -100,6 +100,12 @@ public:
     using EndCallback = void (*)(void* userData);
     void SetEndCallback(EndCallback callback, void* userData);
 
+    // 跳转到指定帧并等待生效（T14）。
+    // 线程运行中：投递请求给解码线程，等它真正 seek 完成才返回；
+    // 线程未运行：直接 seek（此时无并发，安全）。
+    // 返回 false 表示解码器未打开或 seek 失败。
+    bool SeekToFrame(int64_t frame);
+
 private:
     void Run();
 
@@ -134,9 +140,18 @@ private:
     // 挂起的跳转请求（帧号），-1 表示无请求。由调用线程写、解码线程消费。
     std::atomic<int64_t> pendingSeek_{-1};
 
+    // 已完成的 seek 次数。调用线程据此确认「请求已被解码线程执行完」，
+    // 而不是仅仅被取走（取走发生在 seek 之前）。
+    std::atomic<uint64_t> seekApplied_{0};
+
     // 解码线程发布的最新解码位置。CurrentFrame() 不是原子的，
     // 因此跨线程只读这个快照，避免数据竞争。
     std::atomic<int64_t> decodedPosition_{0};
+
+    // 上次返回的播放位置。decodedPosition_ 与 loopCounter_ 不是同一个原子快照，
+    // 循环跳转瞬间两者可能不同步，导致读数短暂回退；这里做单调保护（T10）。
+    // seek 与循环点变更时重置，允许那两处回退。
+    mutable std::atomic<int64_t> lastPlayback_{0};
 
     // 播放结束上报（T07）。回调只触发一次，之后 EndNotified() 为 true。
     std::atomic<EndCallback> endCallback_{nullptr};

@@ -15,6 +15,10 @@ namespace {
 // 同时避免忙等把 CPU 打满。
 constexpr int kFullWaitMs = 5;
 
+// SeekToFrame 等待解码线程执行 seek 的上限。解码线程每轮最多等 5ms，
+// 因此 200ms 足够覆盖若干轮；超时说明线程已停止或卡住。
+constexpr int kSeekWaitMs = 200;
+
 } // namespace
 
 DecodeThread::DecodeThread(AudioDecoder* decoder, RingBuffer* ring, int64_t chunkFrames)
@@ -98,8 +102,9 @@ bool DecodeThread::SetLoopRange(int64_t startFrame, int64_t endFrame)
 
     loopStart_.store(startFrame, std::memory_order_release);
     loopEnd_.store(endFrame, std::memory_order_release);
-    // 循环点变更后计数归零（T08）。
+    // 循环点变更后计数归零（T08），并允许进度回退。
     loopCounter_.Reset();
+    lastPlayback_.store(0, std::memory_order_release);
 
     // T05：正在循环播放且当前位置落在新区间外——丢弃已缓冲数据并跳回新区间起点。
     // 只在循环开启时跳转；循环关闭时区间不影响播放，不应打断。
@@ -143,6 +148,8 @@ int64_t DecodeThread::LoopCount() const
 void DecodeThread::ResetLoopCount()
 {
     loopCounter_.Reset();
+    // 计数归零意味着补偿清零，进度允许回退，因此同步放开单调保护。
+    lastPlayback_.store(0, std::memory_order_release);
 }
 
 int64_t DecodeThread::BufferedFrames() const
@@ -176,16 +183,61 @@ int64_t DecodeThread::PlaybackFrame() const
     }
     // 用原始解码位置做补偿，而不是已扣减缓冲的估算值：
     // 补偿量只与跳转次数有关，扣减缓冲必须放在补偿之后（见 progress.h）。
-    return ComputePlaybackFrame(decodedPosition_.load(std::memory_order_acquire),
-                                BufferedFrames(),
-                                loopStart_.load(std::memory_order_acquire),
-                                loopEnd_.load(std::memory_order_acquire),
-                                loopCounter_.Count());
+    const int64_t raw = ComputePlaybackFrame(decodedPosition_.load(std::memory_order_acquire),
+                                             BufferedFrames(),
+                                             loopStart_.load(std::memory_order_acquire),
+                                             loopEnd_.load(std::memory_order_acquire),
+                                             loopCounter_.Count());
+    // 单调保护（T10）：两个原子量不是同一快照，跳转瞬间可能读到不一致的组合。
+    // 除 seek 与循环点变更（会重置 lastPlayback_）外，读数不得回退。
+    const int64_t previous = lastPlayback_.load(std::memory_order_acquire);
+    if (raw < previous) {
+        return previous;
+    }
+    lastPlayback_.store(raw, std::memory_order_release);
+    return raw;
 }
 
 void DecodeThread::RequestSeek(int64_t frame)
 {
     pendingSeek_.store(frame, std::memory_order_release);
+}
+
+bool DecodeThread::SeekToFrame(int64_t frame)
+{
+    if (decoder_ == nullptr || !decoder_->IsOpen()) {
+        return false;
+    }
+
+    // 线程未运行：没有并发访问解码器，直接 seek。
+    if (!running_.load(std::memory_order_acquire)) {
+        const int64_t landed = decoder_->SeekToFrame(frame);
+        if (landed < 0) {
+            return false;
+        }
+        decodedPosition_.store(landed, std::memory_order_release);
+        reachedEnd_.store(false, std::memory_order_release);
+        // seek 后补偿必须清零（T08 / T14），并允许进度回退。
+        loopCounter_.Reset();
+        lastPlayback_.store(0, std::memory_order_release);
+        return true;
+    }
+
+    // 线程运行中：投递请求，并等待解码线程真正执行完。
+    // 用 seekApplied_ 计数而不是 pendingSeek_ 是否被取走——取走发生在 seek 之前，
+    // 只看取走会提前返回，调用方随后读到的位置仍是旧的。
+    const uint64_t before = seekApplied_.load(std::memory_order_acquire);
+    pendingSeek_.store(frame, std::memory_order_release);
+
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(kSeekWaitMs);
+    while (std::chrono::steady_clock::now() < deadline) {
+        if (seekApplied_.load(std::memory_order_acquire) != before) {
+            // 解码线程已执行完 seek；补偿清零由解码线程在应用请求时完成。
+            return true;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+    return false;
 }
 
 void DecodeThread::SetEndCallback(EndCallback callback, void* userData)
@@ -235,10 +287,15 @@ void DecodeThread::Run()
         if (seekTarget >= 0) {
             if (decoder_->SeekToFrame(seekTarget) < 0) {
                 reachedEnd_.store(true, std::memory_order_release);
+                seekApplied_.fetch_add(1, std::memory_order_acq_rel);
                 break;
             }
             decodedPosition_.store(decoder_->CurrentFrame(), std::memory_order_release);
             reachedEnd_.store(false, std::memory_order_release);
+            // seek 后补偿必须清零（T08 / T14），并允许进度回退。
+            loopCounter_.Reset();
+            lastPlayback_.store(0, std::memory_order_release);
+            seekApplied_.fetch_add(1, std::memory_order_acq_rel);
             continue;
         }
 
