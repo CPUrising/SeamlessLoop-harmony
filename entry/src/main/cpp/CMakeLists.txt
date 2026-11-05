@@ -89,6 +89,16 @@ if(BUILD_TESTS AND NOT CMAKE_SYSTEM_NAME STREQUAL "OHOS")
         FIXTURE_DIR="${NATIVERENDER_ROOT_PATH}/../../../../fixtures/synthetic")
     add_test(NAME LoopCounterTests COMMAND loop_counter_tests)
 
+    add_executable(loop_range_change_tests
+        tests/loop_range_change_test.cpp
+        ${SLH_CORE_SOURCES})
+    target_include_directories(loop_range_change_tests PRIVATE
+        ${NATIVERENDER_ROOT_PATH}
+        ${NATIVERENDER_ROOT_PATH}/tests)
+    target_compile_definitions(loop_range_change_tests PRIVATE
+        FIXTURE_DIR="${NATIVERENDER_ROOT_PATH}/../../../../fixtures/synthetic")
+    add_test(NAME LoopRangeChangeTests COMMAND loop_range_change_tests)
+
     return()
 endif()
 

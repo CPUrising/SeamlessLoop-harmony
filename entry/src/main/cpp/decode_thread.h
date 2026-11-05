@@ -63,7 +63,8 @@ public:
     bool ReachedEnd() const;
 
     // 设置循环区间（帧）。要求 0 <= start < end <= 总帧数，否则返回 false 且不生效。
-    // 可在运行中调用；运行时切换的缓冲清理属任务 4.4。
+    // 运行中调用时（T05 / T06）：若当前播放位置落在新区间之外，丢弃已缓冲数据并跳转到
+    // start；仍在区间内则继续播放，不打断。两种情况都会把循环计数归零（T08）。
     bool SetLoopRange(int64_t startFrame, int64_t endFrame);
 
     // 开关循环。未成功设置过循环区间时，开启不会生效。
@@ -89,6 +90,14 @@ private:
     // 当前是否应执行循环跳转（区间有效且开关打开）。
     bool LoopActive(int64_t* startFrame, int64_t* endFrame) const;
 
+    // 估算当前播放位置：解码位置减去 FIFO 中尚未被消费的帧数。
+    // 与任务 5.1 的进度计算同源，但此处只需判断是否落在区间内。
+    int64_t EstimatePlaybackFrame() const;
+
+    // 请求解码线程跳转到指定帧。实际 seek 在解码线程内完成，
+    // 避免在调用线程与解码线程之间并发操作同一个解码器。
+    void RequestSeek(int64_t frame);
+
     AudioDecoder* decoder_ = nullptr;
     RingBuffer* ring_ = nullptr;
     int64_t chunkFrames_ = 4096;
@@ -106,6 +115,13 @@ private:
 
     // 循环计数与上报（T08 / T09）。
     LoopCounter loopCounter_;
+
+    // 挂起的跳转请求（帧号），-1 表示无请求。由调用线程写、解码线程消费。
+    std::atomic<int64_t> pendingSeek_{-1};
+
+    // 解码线程发布的最新解码位置。CurrentFrame() 不是原子的，
+    // 因此跨线程只读这个快照，避免数据竞争。
+    std::atomic<int64_t> decodedPosition_{0};
 
     // 解码暂存区，仅本线程访问，无需加锁。
     std::vector<int16_t> scratch_;

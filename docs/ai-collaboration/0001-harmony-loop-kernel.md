@@ -17,6 +17,7 @@
 | 2026-11-05 | 真机重新接入后选择「1 → 2 连做」：先完成任务 2.5 真机 G0 冒烟（安装 + 启动 + 听测），再回填任务 1.1 的 `docs/reference-env.md` | 不对循环听测（T15 / T16 / T05）下结论——循环链路与界面尚未实现 |
 | 2026-11-05 | 按 tasks.md 推进任务 4.2：解码线程在 LoopEnd 处按帧 seek 回 LoopStart，补 5 个循环用例 | 不实现循环计数与事件（4.3）、不做运行时改点与 FIFO 清理（4.4）、不做进度补偿（5.1） |
 | 2026-11-05 | 按 tasks.md 推进任务 4.3：新增 `LoopCounter` 统计与回调，跳转时递增、改点与显式重置时归零，补 `LoopCounterTests` | 不实现事件到 JS 的投递（属 5.3 ThreadSafeFunction）、不做运行时改点（4.4）、不改 UI |
+| 2026-11-05 | 按 tasks.md 推进任务 4.4：运行时改循环点，位置在新区间外则清空 FIFO 并跳转，补 `LoopRangeChangeTests` | 不做进度上报（5.1）、不做 play/pause/stop/seek（5.2）、不改 UI |
 
 ## 2. AI 产出
 
@@ -40,6 +41,8 @@
 | 测试（任务 4.2） | `cpp/tests/decode_thread_test.cpp`：新增 `CaptureSink` 与 5 个循环用例 |
 | Native（任务 4.3） | `cpp/loop_counter.h`；`cpp/decode_thread.{h,cpp}` 接入计数与回调 |
 | 测试（任务 4.3） | `cpp/tests/loop_counter_test.cpp`；`cpp/CMakeLists.txt` 增加 `LoopCounterTests` |
+| Native（任务 4.4） | `cpp/ring_buffer.{h,cpp}` 新增 `RequestFlush` / `FlushCount` / `FlushRequestCount` / `HasPendingFlush`；`cpp/decode_thread.{h,cpp}` 新增 `pendingSeek_`、`decodedPosition_` 与运行时改点分支 |
+| 测试（任务 4.4） | `cpp/tests/loop_range_change_test.cpp`；`cpp/CMakeLists.txt` 增加 `LoopRangeChangeTests` |
 
 关键决策记录在 `openspec/changes/0001-harmony-loop-kernel/design.md`（8 条决策，含放弃的方案）。
 
@@ -77,5 +80,6 @@
 | 2026-11-05 | 真机 G0 听测（任务 2.5） | PASS（人类判定：清晰 1 秒 440Hz 正弦音、无爆音；日志 `total underrun bytes=0`） | 同上 |
 | 2026-11-05 | `verify.ps1 --change 0001-harmony-loop-kernel`（任务 4.2 后） | PASS（4 steps, 0 failed；单测 5 套件 / 918 断言） | `artifacts/verify-0001-harmony-loop-kernel-20261105-134253.log` |
 | 2026-11-05 | `verify.ps1 --change 0001-harmony-loop-kernel`（任务 4.3 后） | PASS（4 steps, 0 failed；单测 6 套件 / 964 断言） | `artifacts/verify-0001-harmony-loop-kernel-20261105-135348.log` |
+| 2026-11-05 | `verify.ps1 --change 0001-harmony-loop-kernel`（任务 4.4 后） | PASS（4 steps, 0 failed；单测 7 套件 / 1007 断言） | `artifacts/verify-0001-harmony-loop-kernel-20261105-182218.log` |
 
-未执行项：T05~T07、T10~T11、T13、T15~T16 为 `NOT RUN`（代码未实现）；T02 为部分通过（运行时设置链路待 4.4 / 5.3）；T17 第 3 条（事件上报）代码未接线；任务 6.2 / 6.3 循环听测待 4.4~6.1 完成后执行。详见 `docs/verification-debt.md`。
+未执行项：T07、T10~T11、T13、T15~T16 为 `NOT RUN`（代码未实现）；T02 / T05 为部分通过（运行时链路与听感条款）；T17 第 3 条（事件上报）代码未接线；任务 6.2 / 6.3 循环听测待 4.5~6.1 完成后执行。详见 `docs/verification-debt.md`。

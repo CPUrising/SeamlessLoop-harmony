@@ -61,6 +61,16 @@ size_t RingBuffer::Read(void* out, size_t bytes)
         return 0;
     }
 
+    // 先应用挂起的丢弃请求（T05）：把读指针推到写指针，旧数据全部作废。
+    // 只有消费者会写 readCounter_ 与 flushApplied_，因此仍满足 SPSC。
+    const uint64_t flushRequested = flushRequested_.load(std::memory_order_acquire);
+    if (flushRequested != flushApplied_.load(std::memory_order_relaxed)) {
+        flushApplied_.store(flushRequested, std::memory_order_release);
+        const uint64_t writePos = writeCounter_.load(std::memory_order_acquire);
+        readCounter_.store(writePos, std::memory_order_release);
+        return 0; // 本次回调交出静音，让解码线程重新填充
+    }
+
     const uint64_t readPos = readCounter_.load(std::memory_order_relaxed);
     // 必须 acquire：确保读到生产者已发布的数据。
     const uint64_t writePos = writeCounter_.load(std::memory_order_acquire);
@@ -123,6 +133,27 @@ void RingBuffer::Clear()
     // 先读后写，顺序不重要——前提是调用时生产者与消费者都已停止。
     const uint64_t writePos = writeCounter_.load(std::memory_order_acquire);
     readCounter_.store(writePos, std::memory_order_release);
+}
+
+void RingBuffer::RequestFlush()
+{
+    flushRequested_.fetch_add(1, std::memory_order_acq_rel);
+}
+
+uint64_t RingBuffer::FlushCount() const
+{
+    return flushApplied_.load(std::memory_order_acquire);
+}
+
+bool RingBuffer::HasPendingFlush() const
+{
+    return flushRequested_.load(std::memory_order_acquire) !=
+           flushApplied_.load(std::memory_order_acquire);
+}
+
+uint64_t RingBuffer::FlushRequestCount() const
+{
+    return flushRequested_.load(std::memory_order_acquire);
 }
 
 } // namespace slh

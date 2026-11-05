@@ -51,6 +51,22 @@ public:
     // 清空缓冲。只在生产者与消费者都停止时调用（例如 seek 前）。
     void Clear();
 
+    // 生产者调用：请求丢弃当前缓冲内容（运行时 seek / 改循环点，T05）。
+    // 实际丢弃由消费者在下次 Read 时完成——readCounter_ 始终只由消费者写，
+    // 维持 SPSC 前提；因此本请求不会立刻生效，最多延迟一个回调周期。
+    void RequestFlush();
+
+    // 消费者已应用的丢弃次数。用于诊断与测试观察「缓冲确实被清空」。
+    uint64_t FlushCount() const;
+
+    // 已请求的丢弃次数（含尚未应用的）。生产者据此判断「这块数据是否已过期」：
+    // 解码前后代次变化，说明期间发生了 seek / 改点，本块必须丢弃。
+    uint64_t FlushRequestCount() const;
+
+    // 是否还有尚未被消费者应用的丢弃请求。生产者据此决定是否暂缓写入新数据，
+    // 否则新数据会被随后应用的丢弃一并作废。
+    bool HasPendingFlush() const;
+
 private:
     std::unique_ptr<uint8_t[]> buffer_;
     size_t capacity_ = 0;
@@ -59,6 +75,10 @@ private:
     // 真实下标 = counter % capacity_。
     std::atomic<uint64_t> writeCounter_{0};
     std::atomic<uint64_t> readCounter_{0};
+
+    // 丢弃请求计数（生产者写）与已应用计数（消费者写）。
+    std::atomic<uint64_t> flushRequested_{0};
+    std::atomic<uint64_t> flushApplied_{0};
 };
 
 } // namespace slh

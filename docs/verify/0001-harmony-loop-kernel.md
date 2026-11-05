@@ -6,15 +6,15 @@
 |---|---|
 | change id | `0001-harmony-loop-kernel` |
 | 执行人 | AI 智能体（TRAE） |
-| 执行时间 | 2026-11-05 13:53（最近一次） |
+| 执行时间 | 2026-11-05 18:22（最近一次） |
 | 机器 / 系统 | Windows 11（开发机） |
 | 工具链版本 | OpenSpec CLI 1.14.3；CMake 4.2.3；MSVC 19.44.35228.0；Python 3.14 + numpy 2.5.3；ffmpeg N-122110；DevEco Studio 26.0.0（build DS-261.23567.138.36.2600865）；hvigor 6.26.9 |
 | 运行环境 | HarmonyOS SDK 26.0.0.105（apiVersion 26，Release）；hdc 3.2.0f；**真机在线（MRT-AL10，序列号 5KTUT25424016774，API 26，系统 7.0.0.111(SP12C00E111R5P2)）** |
 | 命令 | `powershell -File scripts/verify.ps1 --change 0001-harmony-loop-kernel` |
-| 日志 | `artifacts/verify-0001-harmony-loop-kernel-20261105-135348.log` |
+| 日志 | `artifacts/verify-0001-harmony-loop-kernel-20261105-182218.log` |
 | 结果包 | `fixtures/synthetic/` 3 个音频 + `fixtures/manifest.json`；`entry/build/default/outputs/default/entry-default-signed.hap`（3 364 578 B，含 `libs/arm64-v8a/libentry.so`、`libs/x86_64/libentry.so`） |
 
-**本次验证范围**：任务 1.1、2.2~2.5、3.1~3.5、4.1~4.3 已完成。本机单元测试 6 套件 / 964 断言全通过；真机 G0 冒烟（2.5）已实测通过。任务 6.2 / 6.3 真机听测仍阻塞（循环播放链路未完全接通 UI）。功能场景 T05~T07、T10~T11、T13、T15~T16 仍未实现。
+**本次验证范围**：任务 1.1、2.2~2.5、3.1~3.5、4.1~4.4 已完成。本机单元测试 7 套件 / 1007 断言全通过；真机 G0 冒烟（2.5）已实测通过。任务 6.2 / 6.3 真机听测仍阻塞（循环播放链路未完全接通 UI）。功能场景 T07、T10~T11、T13、T15~T16 仍未实现；T05 的 200ms 听感条款待 6.3。
 
 ## 2. 需求覆盖
 
@@ -24,9 +24,9 @@
 | Sample-Accurate Loop Jump | T02 | `LoopConfigTests.testInvalidEndNormalized` | **部分通过** | 终点 0 / -1 / -4096 / Total+1 / Total×2 均归一化为 Total，起点保持不变，错误回调未触发；「播放不中断」需运行时设置链路（任务 4.4 / 5.3） |
 | Sample-Accurate Loop Jump | T03 | `LoopConfigTests.testInvalidStartRejected` | **PASS** | 起点 -1 / -Total / Total / Total+1 均返回 `kInvalidStart`，原区间保持不变，回调收到 4 次 `kInvalidStart` |
 | Sample-Accurate Loop Jump | T04 | `LoopConfigTests.testDegenerateRangeRejected` | **PASS** | `End == Start`、`End < Start`、`End=1 < Start` 三种退化形态均被拒绝，原区间不变，不进入空区间 |
-| Loop Configuration At Runtime | T05 | `LoopConfigTests.testChangeOutsideRangeSeeks` + 真机听测 | NOT RUN | 代码未实现 + 无真机 |
-| Loop Configuration At Runtime | T06 | `LoopConfigTests.testChangeInsideRangeKeepsPosition` | NOT RUN | 代码未实现 |
-| Loop Configuration At Runtime | T07 | `LoopStreamTests.testLoopDisabledStopsAtEnd` | NOT RUN | 代码未实现 |
+| Loop Configuration At Runtime | T05 | `LoopRangeChangeTests.testChangeOutsideRangeSeeks` + `testChangeOutsideRangeFlushesBufferedAudio` + 真机听测 | **部分通过** | 改点后跳转落点与 FIFO 清空已实测；200ms 无感中断属听感条款，待任务 6.3 |
+| Loop Configuration At Runtime | T06 | `LoopRangeChangeTests.testChangeInsideRangeKeepsPosition` | **PASS** | 位置仍在新区间内时不触发清空与跳转，解码持续推进 |
+| Loop Configuration At Runtime | T07 | `LoopStreamTests.testLoopDisabledStopsAtEnd` | NOT RUN | 代码未实现（任务 4.5） |
 | Loop Cycle Reporting | T08 | `LoopCounterTests.testCounterIncrementsAndResets` | **PASS** | 真实循环跳转下计数与回调累计值一致（1,2,3…单调递增）；循环点变更后归零；`ResetLoopCount()` 后可重新从 1 计数 |
 | Loop Cycle Reporting | T09 | `LoopCounterTests.testNoEventWhenDisabled` | **PASS** | 设置区间但不开启循环，整曲播到末尾，`LoopCount == 0` 且回调一次未触发 |
 | Playback Progress Reporting | T10 | `ProgressTests.testProgressContinuousAcrossLoop` | NOT RUN | 代码未实现 |
@@ -45,7 +45,7 @@
 | 规范严格校验 | `openspec validate --all --strict` | **PASS**（1 passed, 0 failed） |
 | 合成 fixture 生成 | `python scripts/make-fixtures.py` | **PASS**（3 文件 + manifest，见下） |
 | 合成 fixture 相位连续性 | 离线 numpy 检查 | **PASS**（见 D5 说明） |
-| 全量单元测试 | `scripts/verify.ps1 --scope unit` | **PASS**（6 套件 / 964 断言 / 0 失败） |
+| 全量单元测试 | `scripts/verify.ps1 --scope unit` | **PASS**（7 套件 / 1007 断言 / 0 失败） |
 | HAP 构建 | `hvigorw --mode module -p product=default --no-daemon assembleHap` | **PASS**（BUILD SUCCESSFUL，产出 signed HAP） |
 | Native 库链接 | `llvm-readelf -d libentry.so` | **PASS**（NEEDED 含 `libohaudio.so`、`libhilog_ndk.z.so`、`libace_napi.z.so`） |
 | 既有通过项是否回退 | 本变更为首次变更，无既有基线 | N/A |
@@ -148,12 +148,27 @@
 | 回调并发约定 | 回调在解码线程同步执行；计数读写全部使用原子变量，回调未登记时递增不崩溃 |
 | HAP 构建（回归） | BUILD SUCCESSFUL；`loop_counter.h` 与计数逻辑已编入 `libentry.so` |
 
+### 任务 4.4 实测证据（2026-11-05 18:22）
+
+| 检查项 | 实测结果 |
+|---|---|
+| `LoopRangeChangeTests` | **PASS**：5 用例 / 43 断言 / 0 失败（新增第 7 个测试套件） |
+| T05 跳转落点 | 原区间 `[33075, 40000)` 播放中改为 `[80000, 121275)`；改点后消费者读到的第一个采样等于 fixture 中 `all[80000]`，证明跳转精确落在新区间起点 |
+| T05 FIFO 清空 | `RequestFlush()` 由消费者在 `Read()` 时应用；`FlushCount` 递增且 `HasPendingFlush()` 回到 false，旧区间残留数据不会播出 |
+| T05 计数归零 | 改点后回调重新从 1 报数（`sawRestartFromOne`），不是接着旧计数递增 |
+| T06 不跳转 | 原区间 `[0, 30000)` 改为 `[0, 121275)`（仍含当前位置）：`FlushCount` 不变、无挂起丢弃、解码帧数持续增长 |
+| 循环关闭时改点 | 仅更新区间与计数，不触发清空或跳转，普通播放不被打断 |
+| 改点后仍可循环 | 新区间 `[60000, 121275)` 能再次触发跳转，`LoopCount` 从 1 重新累计 |
+| 数据新鲜度防护 | 解码线程记录读前 `FlushRequestCount()` 代次；解码耗时期间若发生改点/seek，该块数据整块丢弃，避免残留旧音频（本任务修复的实现缺陷） |
+| HAP 构建（回归） | BUILD SUCCESSFUL；运行时改点逻辑已编入 `libentry.so` |
+
 ### 测试过程中发现并修正的缺陷
 
 | 编号 | 缺陷 | 处理 |
 |---|---|---|
 | B1 | 首版 `PlanWrite` 的测试断言把 `droppedTailBytes` 重复计入守恒式（`1024+2+2=1028 ≠ 1026`） | 确认为**测试断言错误**，实现本身正确。已在 `audio_output_logic.h` 明确 `droppedTailBytes` 是 `silenceBytes` 的子集、不参与求和；断言改为 `bytesFromFifo + silenceBytes == size`，并新增「子集关系」断言防止回归 |
 | B2 | 任务 4.2 立体声用例首跑失败：用帧号直接索引 `int16` 参考数组，未乘声道数 | 确认为**测试断言错误**（单声道用例同时通过即可佐证实现无误）。改为 `all.data() + loopStart * 2` 后通过，并加注释说明交错数据的偏移换算 |
+| B3 | 任务 4.4 首跑 5 处失败 | 其中 2 处为**断言错误**（改点后立即读 `LoopCount()==0`，但解码线程已继续计数）；1 处为**用例设计错误**（没有消费者，丢弃请求永不应用）；1 处为**实现缺陷**：解码线程可能把「改点前读出的数据」写入消费者已清空的 FIFO，导致旧音频残留。已用 `FlushRequestCount()` 代次比对修复实现，并新增 `testChangeOutsideRangeFlushesBufferedAudio` 覆盖 |
 
 ### 构建日志中的已知告警（非缺陷）
 
@@ -198,7 +213,7 @@
 - [x] 需修复后复验（Build 阶段进行中，非归档态）
 - [ ] 需人类决策
 
-**说明**：Plan 阶段产物（proposal / design / tasks / delta spec）已完成并通过严格校验；合成 fixture 已生成并通过相位连续性数值检查；HAP 构建、真机安装、启动与 G0 正弦波听测均已实测通过。当前已完成任务 1.1、2.2~2.5、3.1~3.5、4.1~4.3，下一步为任务 4.4。任务 6.2 / 6.3 的循环听测需等运行时改点、进度与控制接口及最小界面（4.4~6.1）完成后再执行。
+**说明**：Plan 阶段产物（proposal / design / tasks / delta spec）已完成并通过严格校验；合成 fixture 已生成并通过相位连续性数值检查；HAP 构建、真机安装、启动与 G0 正弦波听测均已实测通过。当前已完成任务 1.1、2.2~2.5、3.1~3.5、4.1~4.4，下一步为任务 4.5。任务 6.2 / 6.3 的循环听测需等进度与控制接口及最小界面（4.5~6.1）完成后再执行。
 
 已确认的决策：HarmonyOS SDK **26.0.0**、真实素材由用户提供、包名 `com.cpu.seamlessloopharmony`。
 

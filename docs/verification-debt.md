@@ -11,7 +11,7 @@
 | `AudioOutput` | OHAudio 回调输出正弦波（G0 冒烟，任务 2.5） | — | 通过 | 2026-11-05 12:19 真机实测：听到 1 秒 440Hz 正弦波、无爆音；日志 `renderer started: 48000 Hz, 2 ch`，`total underrun bytes=0` |
 | `LoopStream` | T01 循环跳转 | `DecodeThreadTests` | 通过 | 2026-11-05 实测：12 用例 / 82 断言 / 0 失败；拼接输出与原始 PCM 逐字节一致 |
 | `LoopConfig` | T02~T04 循环点校验与归一化 | `LoopConfigTests` | 通过 | 2026-11-05 实测：9 用例 / 74 断言 / 0 失败（T02 的「播放不中断」待运行时链路 4.4 / 5.3） |
-| `LoopConfig` | T05 / T06 运行时修改循环点 | — | 未执行 | 代码未实现（任务 4.4） |
+| `LoopConfig` | T05 / T06 运行时修改循环点 | `LoopRangeChangeTests` | 通过 | 2026-11-05 实测：5 用例 / 43 断言 / 0 失败；T05 的 200ms 听感条款待 6.3 |
 | `LoopCounter` | T08 / T09 循环计数与事件 | `LoopCounterTests` | 通过 | 2026-11-05 实测：7 用例 / 46 断言 / 0 失败；计数单调递增、改点后归零、关闭循环不上报 |
 | `Progress` | T10 / T11 进度连续性与回绕补偿 | `ProgressTests` | 未执行 | 代码未实现 |
 | `Decoder` | T12 加载与格式上报 | `DecoderTests` | 通过 | 2026-11-05 实测：10 用例 / 50 断言 / 0 失败，含 WAV 单双声道与 MP3 |
@@ -25,7 +25,7 @@
 | `AudioOutput` | T17 第 3 条：欠载事件回调上报 | — | 未执行 | **代码未接线**：`SetUnderrunCallback` 已实现但全仓库无调用点，上报链路不通。归属任务 5.3（napi 暴露事件） |
 | 听感验收 | T15 循环边界无静音间隙 | 人工听测 | 阻塞 | 真机在线，但循环播放链路（任务 4.2~6.1）未实现，暂不可测 |
 | 听感验收 | T16 循环边界无爆音 | 人工听测 | 阻塞 | 真机在线；合成 fixture 相位连续性已数值验证；待 6.2 |
-| 听感验收 | T05 播放中改循环点无明显中断 | 人工听测 | 阻塞 | 真机在线；待任务 4.4 与 6.3 |
+| 听感验收 | T05 播放中改循环点无明显中断 | 人工听测 | 阻塞 | 真机在线；跳转与清空逻辑已通过单测，200ms 听感条款待 6.3 |
 | 真实素材 | `fixtures/real/` 真实曲目听测 | 人工听测 | 阻塞 | 待用户提供素材与循环点数值 |
 
 ## 已关闭
@@ -45,3 +45,4 @@
 | 2026-11-05 | OHAudio 正弦波真机发声（任务 2.5 / G0） | 通过 | 同上；人类听测判定「清晰 1 秒正弦音，无爆音」，日志 `renderer started: 48000 Hz, 2 ch`、`total underrun bytes=0` |
 | 2026-11-05 | T01 循环跳转（任务 4.2） | 通过 | `artifacts/verify-0001-harmony-loop-kernel-20261105-134253.log`；`testLoopJumpsBackToStart` 等 5 个新用例全通过 |
 | 2026-11-05 | T08 / T09 循环计数与事件上报（任务 4.3） | 通过 | `artifacts/verify-0001-harmony-loop-kernel-20261105-135348.log`；`LoopCounterTests` 7 用例 / 46 断言全通过 |
+| 2026-11-05 | T05 / T06 运行时修改循环点（任务 4.4） | 通过 | `artifacts/verify-0001-harmony-loop-kernel-20261105-182218.log`；`LoopRangeChangeTests` 5 用例 / 43 断言全通过；T05 的听感条款仍待 6.3 |

@@ -11,8 +11,8 @@
 | T02 | 循环终点非法值归一化 | 同上 → `T02` | `LoopConfigTests.testInvalidEndNormalized` | 部分通过（归一化与不拒绝已通过；「不中断播放」待 4.2 集成验证） |
 | T03 | 循环起点非法值拒绝 | 同上 → `T03` | `LoopConfigTests.testInvalidStartRejected` | 通过 |
 | T04 | 循环区间退化保护 | 同上 → `T04` | `LoopConfigTests.testDegenerateRangeRejected` | 通过 |
-| T05 | 播放中修改循环点立即生效 | 同上 → `T05` | `LoopConfigTests.testChangeOutsideRangeSeeks` + 真机听测 | 未实现 |
-| T06 | 播放中修改循环点不影响当前位置 | 同上 → `T06` | `LoopConfigTests.testChangeInsideRangeKeepsPosition` | 未实现 |
+| T05 | 播放中修改循环点立即生效 | 同上 → `T05` | `LoopRangeChangeTests.testChangeOutsideRangeSeeks` + `testChangeOutsideRangeFlushesBufferedAudio` + 真机听测 | 部分通过（跳转落点与 FIFO 清空已通过；200ms 无感中断待 6.3） |
+| T06 | 播放中修改循环点不影响当前位置 | 同上 → `T06` | `LoopRangeChangeTests.testChangeInsideRangeKeepsPosition` | 通过 |
 | T07 | 关闭循环后的整曲播放 | 同上 → `T07` | `LoopStreamTests.testLoopDisabledStopsAtEnd` | 未实现 |
 | T08 | 循环次数单调递增 | 同上 → `T08` | `LoopCounterTests.testCounterIncrementsAndResets` | 通过 |
 | T09 | 关闭循环时不上报循环事件 | 同上 → `T09` | `LoopCounterTests.testNoEventWhenDisabled` | 通过 |
@@ -39,3 +39,4 @@
 | 2026-11-05 | `0001-harmony-loop-kernel` | 任务 4.1 完成：新增 `LoopConfigTests`（9 用例 / 74 断言），T03 / T04 → 通过，T02 → 部分通过（播放不中断待 4.2） |
 | 2026-11-05 | `0001-harmony-loop-kernel` | 任务 4.2 完成：`DecodeThreadTests` 扩至 12 用例 / 82 断言，T01 → 通过（拼接结果与原始 PCM 逐字节一致） |
 | 2026-11-05 | `0001-harmony-loop-kernel` | 任务 4.3 完成：新增 `LoopCounterTests`（7 用例 / 46 断言），T08 / T09 → 通过 |
+| 2026-11-05 | `0001-harmony-loop-kernel` | 任务 4.4 完成：新增 `LoopRangeChangeTests`（5 用例 / 43 断言），T06 → 通过，T05 → 部分通过（200ms 听感条款待 6.3） |
