@@ -1,16 +1,22 @@
 /*
  * DecodeThread：独立解码线程。
  *
- * 职责（对应 design.md 决策 2）：
+ * 职责（对应 design.md 决策 2 / 3）：
  * - 在自己的线程里持续从 AudioDecoder 读 PCM，写入 RingBuffer。
  * - FIFO 满时等待，绝不阻塞 OHAudio 回调线程。
- * - 到文件末尾时停止解码（循环跳转由任务 4.2 在此基础上加入）。
+ * - 循环开启时，解码位置到达 LoopEnd 就在本线程内 seek 回 LoopStart，
+ *   因此 FIFO 里永远是「已拼接好的连续数据」，回调侧感知不到循环。
+ * - 循环关闭时，到文件末尾停止解码。
  *
  * 为什么用轮询等待而不是条件变量：
  * 消费者是 OHAudio 的实时回调线程，回调内不允许加锁。若用条件变量，
  * 消费者每次 Read 后都要加锁 notify，违反实时性要求。因此生产者侧
  * 采用短周期轮询（原 WPF 端 AudioLooper 用 Sleep(50) 补数，这里取 5ms，
  * 兼顾响应速度与 CPU 占用）。
+ *
+ * 对齐说明（AGENTS.md 硬约束 3）：
+ * 循环点用帧序号表示，seek 也按帧进行；一帧 = channels × 2 字节 = BlockAlign，
+ * 因此跳转后的字节位置天然按 BlockAlign 取整，无需额外的字节级修正。
  *
  * 本类不依赖 OHAudio，可在开发机上单测。
  */
@@ -46,14 +52,26 @@ public:
 
     bool IsRunning() const;
 
-    // 累计已解码写入 FIFO 的帧数。
+    // 累计已解码写入 FIFO 的帧数（循环重复的部分同样计数）。
     int64_t DecodedFrames() const;
 
     // 是否已读到文件末尾（非循环模式下即播放结束）。
     bool ReachedEnd() const;
 
+    // 设置循环区间（帧）。要求 0 <= start < end <= 总帧数，否则返回 false 且不生效。
+    // 可在运行中调用；运行时切换的缓冲清理属任务 4.4。
+    bool SetLoopRange(int64_t startFrame, int64_t endFrame);
+
+    // 开关循环。未成功设置过循环区间时，开启不会生效。
+    void SetLooping(bool enabled);
+
+    bool IsLooping() const;
+
 private:
     void Run();
+
+    // 当前是否应执行循环跳转（区间有效且开关打开）。
+    bool LoopActive(int64_t* startFrame, int64_t* endFrame) const;
 
     AudioDecoder* decoder_ = nullptr;
     RingBuffer* ring_ = nullptr;
@@ -64,6 +82,11 @@ private:
     std::atomic<bool> running_{false};
     std::atomic<bool> reachedEnd_{false};
     std::atomic<int64_t> decodedFrames_{0};
+
+    // 循环区间与开关。读写都在原子变量上，避免解码线程与调用线程竞争。
+    std::atomic<int64_t> loopStart_{0};
+    std::atomic<int64_t> loopEnd_{0};
+    std::atomic<bool> looping_{false};
 
     // 解码暂存区，仅本线程访问，无需加锁。
     std::vector<int16_t> scratch_;

@@ -29,7 +29,7 @@
 ## 4. 循环核心
 
 - [x] 4.1 实现 `LoopConfig`：校验并归一化 LoopStart / LoopEnd（覆盖 T02 / T03 / T04）
-- [ ] 4.2 解码线程实现循环跳转：到达 LoopEnd 时按 BlockAlign 对齐 seek 回 LoopStart（覆盖 T01）
+- [x] 4.2 解码线程实现循环跳转：到达 LoopEnd 时按 BlockAlign 对齐 seek 回 LoopStart（覆盖 T01）
 - [ ] 4.3 实现循环计数与事件回调，seek 与循环点变更时重置计数（覆盖 T08 / T09）
 - [ ] 4.4 实现运行时修改循环点：若当前播放位置落在新区间外则清空 FIFO 并跳转（覆盖 T05 / T06）
 - [ ] 4.5 实现关闭循环后播放到末尾停止并上报结束事件（覆盖 T07）

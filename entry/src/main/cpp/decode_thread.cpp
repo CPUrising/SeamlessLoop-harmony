@@ -75,6 +75,55 @@ bool DecodeThread::ReachedEnd() const
     return reachedEnd_.load(std::memory_order_acquire);
 }
 
+bool DecodeThread::SetLoopRange(int64_t startFrame, int64_t endFrame)
+{
+    if (decoder_ == nullptr || !decoder_->IsOpen()) {
+        return false;
+    }
+    const int64_t total = decoder_->Format().totalFrames;
+    // 内部不变量防护：越界或退化区间一律不生效，避免解码线程忙转。
+    // 业务层的归一化与错误上报由 LoopConfig 负责（任务 4.1）。
+    if (startFrame < 0 || endFrame <= startFrame || endFrame > total) {
+        return false;
+    }
+    loopStart_.store(startFrame, std::memory_order_release);
+    loopEnd_.store(endFrame, std::memory_order_release);
+    return true;
+}
+
+void DecodeThread::SetLooping(bool enabled)
+{
+    if (enabled) {
+        // 没有有效区间时不开循环，否则解码线程会在 LoopEnd 处原地打转。
+        const int64_t start = loopStart_.load(std::memory_order_acquire);
+        const int64_t end = loopEnd_.load(std::memory_order_acquire);
+        if (start < 0 || end <= start) {
+            return;
+        }
+    }
+    looping_.store(enabled, std::memory_order_release);
+}
+
+bool DecodeThread::IsLooping() const
+{
+    return looping_.load(std::memory_order_acquire);
+}
+
+bool DecodeThread::LoopActive(int64_t* startFrame, int64_t* endFrame) const
+{
+    if (!looping_.load(std::memory_order_acquire)) {
+        return false;
+    }
+    const int64_t start = loopStart_.load(std::memory_order_acquire);
+    const int64_t end = loopEnd_.load(std::memory_order_acquire);
+    if (start < 0 || end <= start) {
+        return false;
+    }
+    *startFrame = start;
+    *endFrame = end;
+    return true;
+}
+
 void DecodeThread::Run()
 {
     const int32_t channels = decoder_->Format().channels;
@@ -89,15 +138,37 @@ void DecodeThread::Run()
 
         // 按 FIFO 可写空间限制本次读取量，避免读到放不下的数据。
         const int64_t writableFrames = static_cast<int64_t>(ring_->AvailableToWrite() / frameBytes);
-        const int64_t frames = writableFrames < chunkFrames_ ? writableFrames : chunkFrames_;
+        int64_t frames = writableFrames < chunkFrames_ ? writableFrames : chunkFrames_;
         if (frames <= 0) {
             std::this_thread::sleep_for(std::chrono::milliseconds(kFullWaitMs));
             continue;
         }
 
+        // 循环跳转（T01）：到达 LoopEnd 就在本线程 seek 回 LoopStart。
+        // 不重开文件、不重建渲染器，音频流完全无感。
+        int64_t loopStart = 0;
+        int64_t loopEnd = 0;
+        if (LoopActive(&loopStart, &loopEnd)) {
+            const int64_t pos = decoder_->CurrentFrame();
+            if (pos >= loopEnd) {
+                // 按帧 seek 天然满足 BlockAlign 对齐（一帧 = channels × 2 字节）。
+                if (decoder_->SeekToFrame(loopStart) < 0) {
+                    // 区间已校验过，理论上不可达；失败按播放结束处理，避免忙转。
+                    reachedEnd_.store(true, std::memory_order_release);
+                    break;
+                }
+                continue; // 重新按新位置计算本次可读帧数
+            }
+            // 不越过 LoopEnd 多读，否则 FIFO 里会出现本该被跳过的数据。
+            const int64_t remaining = loopEnd - pos;
+            if (frames > remaining) {
+                frames = remaining;
+            }
+        }
+
         const int64_t got = decoder_->ReadFrames(scratch_.data(), frames);
         if (got <= 0) {
-            // 到达文件末尾。循环跳转在任务 4.2 接入此处。
+            // 到达文件末尾。循环开启时不应走到这里（LoopEnd 处已跳转）。
             reachedEnd_.store(true, std::memory_order_release);
             break;
         }

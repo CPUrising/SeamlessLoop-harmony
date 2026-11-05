@@ -15,6 +15,7 @@
 | 2026-11-05 | 按 tasks.md 推进任务 3.4 / 3.5：实现 DecodeThread、写回调改从 FIFO 取数并上报欠载；补充两组单测 | 不实现循环跳转（属 4.2）、不做进度计算、不改 ArkTS 页面 |
 | 2026-11-05 | 按 tasks.md 推进任务 4.1：实现 `LoopConfig` 的循环点校验与归一化，补 `LoopConfigTests` | 不实现循环跳转与计数（属 4.2 / 4.3）、不做运行时改点（属 4.4）、不改 UI |
 | 2026-11-05 | 真机重新接入后选择「1 → 2 连做」：先完成任务 2.5 真机 G0 冒烟（安装 + 启动 + 听测），再回填任务 1.1 的 `docs/reference-env.md` | 不对循环听测（T15 / T16 / T05）下结论——循环链路与界面尚未实现 |
+| 2026-11-05 | 按 tasks.md 推进任务 4.2：解码线程在 LoopEnd 处按帧 seek 回 LoopStart，补 5 个循环用例 | 不实现循环计数与事件（4.3）、不做运行时改点与 FIFO 清理（4.4）、不做进度补偿（5.1） |
 
 ## 2. AI 产出
 
@@ -34,6 +35,8 @@
 | 测试（任务 3.4~3.5） | `cpp/tests/{audio_output_logic_test.cpp,decode_thread_test.cpp}` |
 | Native（任务 4.1） | `cpp/loop_config.{h,cpp}` |
 | 测试（任务 4.1） | `cpp/tests/loop_config_test.cpp`；`cpp/CMakeLists.txt` 增加 `LoopConfigTests` |
+| Native（任务 4.2） | `cpp/decode_thread.{h,cpp}`：循环区间原子存储、LoopEnd 处跳转、区间不变量防护 |
+| 测试（任务 4.2） | `cpp/tests/decode_thread_test.cpp`：新增 `CaptureSink` 与 5 个循环用例 |
 
 关键决策记录在 `openspec/changes/0001-harmony-loop-kernel/design.md`（8 条决策，含放弃的方案）。
 
@@ -69,5 +72,6 @@
 | 2026-11-05 | `verify.ps1 --change 0001-harmony-loop-kernel`（任务 4.1 后） | PASS（4 steps, 0 failed；单测 5 套件 / 870 断言） | `artifacts/verify-0001-harmony-loop-kernel-20261105-115309.log` |
 | 2026-11-05 | `hdc install -r entry-default-signed.hap` + `aa start`（真机 MRT-AL10） | PASS（安装成功、启动成功，进程存活） | `docs/verify/0001-harmony-loop-kernel.md`「任务 2.5 真机 G0 冒烟」 |
 | 2026-11-05 | 真机 G0 听测（任务 2.5） | PASS（人类判定：清晰 1 秒 440Hz 正弦音、无爆音；日志 `total underrun bytes=0`） | 同上 |
+| 2026-11-05 | `verify.ps1 --change 0001-harmony-loop-kernel`（任务 4.2 后） | PASS（4 steps, 0 failed；单测 5 套件 / 918 断言） | `artifacts/verify-0001-harmony-loop-kernel-20261105-134253.log` |
 
-未执行项：T01、T05~T11、T13、T15~T16 为 `NOT RUN`（代码未实现）；T17 第 3 条（事件上报）代码未接线；任务 6.2 / 6.3 循环听测待 4.2~6.1 完成后执行。详见 `docs/verification-debt.md`。
+未执行项：T05~T11、T13、T15~T16 为 `NOT RUN`（代码未实现）；T02 为部分通过（运行时设置链路待 4.4 / 5.3）；T17 第 3 条（事件上报）代码未接线；任务 6.2 / 6.3 循环听测待 4.3~6.1 完成后执行。详见 `docs/verification-debt.md`。
