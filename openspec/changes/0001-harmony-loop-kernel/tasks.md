@@ -23,12 +23,12 @@
 - [x] 3.1 引入 dr_libs（wav/mp3）到 `entry/src/main/cpp/third_party/`，保持与原项目同版本
 - [x] 3.2 实现 `AudioDecoder`：加载文件，输出采样率、声道数、总采样数，支持按采样点 seek
 - [x] 3.3 实现 `RingBuffer`（单生产者单消费者，容量 2 秒）
-- [ ] 3.4 实现解码线程：持续解码并写入 FIFO，FIFO 满时等待
-- [ ] 3.5 写回调改为从 FIFO 取数据；FIFO 空时写静音并上报欠载事件（覆盖 T17）
+- [x] 3.4 实现解码线程：持续解码并写入 FIFO，FIFO 满时等待
+- [x] 3.5 写回调改为从 FIFO 取数据；FIFO 空时写静音并上报欠载事件（覆盖 T17）
 
 ## 4. 循环核心
 
-- [ ] 4.1 实现 `LoopConfig`：校验并归一化 LoopStart / LoopEnd（覆盖 T02 / T03 / T04）
+- [x] 4.1 实现 `LoopConfig`：校验并归一化 LoopStart / LoopEnd（覆盖 T02 / T03 / T04）
 - [ ] 4.2 解码线程实现循环跳转：到达 LoopEnd 时按 BlockAlign 对齐 seek 回 LoopStart（覆盖 T01）
 - [ ] 4.3 实现循环计数与事件回调，seek 与循环点变更时重置计数（覆盖 T08 / T09）
 - [ ] 4.4 实现运行时修改循环点：若当前播放位置落在新区间外则清空 FIFO 并跳转（覆盖 T05 / T06）

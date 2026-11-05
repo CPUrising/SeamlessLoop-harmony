@@ -8,9 +8,9 @@
 | ID | 场景 | 规范位置 | 自动化测试 | 状态 |
 |---|---|---|---|---|
 | T01 | 循环终点跳回循环起点 | `specs/audio-loop-playback` → `T01` | `LoopStreamTests.testLoopJumpsBackToStart` | 未实现 |
-| T02 | 循环终点非法值归一化 | 同上 → `T02` | `LoopConfigTests.testInvalidEndNormalized` | 未实现 |
-| T03 | 循环起点非法值拒绝 | 同上 → `T03` | `LoopConfigTests.testInvalidStartRejected` | 未实现 |
-| T04 | 循环区间退化保护 | 同上 → `T04` | `LoopConfigTests.testDegenerateRangeRejected` | 未实现 |
+| T02 | 循环终点非法值归一化 | 同上 → `T02` | `LoopConfigTests.testInvalidEndNormalized` | 部分通过（归一化与不拒绝已通过；「不中断播放」待 4.2 集成验证） |
+| T03 | 循环起点非法值拒绝 | 同上 → `T03` | `LoopConfigTests.testInvalidStartRejected` | 通过 |
+| T04 | 循环区间退化保护 | 同上 → `T04` | `LoopConfigTests.testDegenerateRangeRejected` | 通过 |
 | T05 | 播放中修改循环点立即生效 | 同上 → `T05` | `LoopConfigTests.testChangeOutsideRangeSeeks` + 真机听测 | 未实现 |
 | T06 | 播放中修改循环点不影响当前位置 | 同上 → `T06` | `LoopConfigTests.testChangeInsideRangeKeepsPosition` | 未实现 |
 | T07 | 关闭循环后的整曲播放 | 同上 → `T07` | `LoopStreamTests.testLoopDisabledStopsAtEnd` | 未实现 |
@@ -23,7 +23,7 @@
 | T14 | 按采样点跳转 | 同上 → `T14` | `TransportTests.testSeekClampsAndAligns` | 部分通过（解码侧 clamp 已通过；FIFO 清空待 5.2） |
 | T15 | 循环边界无静音间隙 | 同上 → `T15` | 离线波形分析 + 真机听测 | 未实现 |
 | T16 | 循环边界无爆音 | 同上 → `T16` | 离线波形分析 + 真机听测 | 未实现 |
-| T17 | 缓冲欠载可恢复 | 同上 → `T17` | `RingBufferTests.testUnderrunWritesSilence` | 部分通过（静音填充已通过；欠载事件上报待 3.5） |
+| T17 | 缓冲欠载可恢复 | 同上 → `T17` | `RingBufferTests` + `AudioOutputLogicTests` | 部分通过（第 1、2 条已通过；第 3 条事件上报未接线） |
 
 ## 状态取值
 
@@ -35,3 +35,5 @@
 |---|---|---|
 | 2026-11-04 | `0001-harmony-loop-kernel` | 建立 T01~T17 全部 17 条场景 |
 | 2026-11-05 | `0001-harmony-loop-kernel` | T12 → 通过（`DecoderTests`）；T14 / T17 → 部分通过（解码侧 clamp、欠载静音已实测，播放侧待后续任务） |
+| 2026-11-05 | `0001-harmony-loop-kernel` | 任务 3.4 / 3.5 完成：新增 `DecodeThreadTests`（34 断言）与 `AudioOutputLogicTests`（528 断言）；T17 仍为部分通过（真实欠载需真机） |
+| 2026-11-05 | `0001-harmony-loop-kernel` | 任务 4.1 完成：新增 `LoopConfigTests`（9 用例 / 74 断言），T03 / T04 → 通过，T02 → 部分通过（播放不中断待 4.2） |

@@ -17,6 +17,8 @@ include_directories(${NATIVERENDER_ROOT_PATH}
 set(SLH_CORE_SOURCES
     audio_decoder.cpp
     ring_buffer.cpp
+    decode_thread.cpp
+    loop_config.cpp
     third_party/dr_libs_impl.c)
 
 # ---------------------------------------------------------------------------
@@ -51,6 +53,31 @@ if(BUILD_TESTS AND NOT CMAKE_SYSTEM_NAME STREQUAL "OHOS")
     target_compile_definitions(audio_decoder_tests PRIVATE
         FIXTURE_DIR="${NATIVERENDER_ROOT_PATH}/../../../../fixtures/synthetic")
     add_test(NAME DecoderTests COMMAND audio_decoder_tests)
+
+    add_executable(audio_output_logic_tests
+        tests/audio_output_logic_test.cpp)
+    target_include_directories(audio_output_logic_tests PRIVATE
+        ${NATIVERENDER_ROOT_PATH}
+        ${NATIVERENDER_ROOT_PATH}/tests)
+    add_test(NAME AudioOutputLogicTests COMMAND audio_output_logic_tests)
+
+    add_executable(decode_thread_tests
+        tests/decode_thread_test.cpp
+        ${SLH_CORE_SOURCES})
+    target_include_directories(decode_thread_tests PRIVATE
+        ${NATIVERENDER_ROOT_PATH}
+        ${NATIVERENDER_ROOT_PATH}/tests)
+    target_compile_definitions(decode_thread_tests PRIVATE
+        FIXTURE_DIR="${NATIVERENDER_ROOT_PATH}/../../../../fixtures/synthetic")
+    add_test(NAME DecodeThreadTests COMMAND decode_thread_tests)
+
+    add_executable(loop_config_tests
+        tests/loop_config_test.cpp
+        loop_config.cpp)
+    target_include_directories(loop_config_tests PRIVATE
+        ${NATIVERENDER_ROOT_PATH}
+        ${NATIVERENDER_ROOT_PATH}/tests)
+    add_test(NAME LoopConfigTests COMMAND loop_config_tests)
 
     return()
 endif()

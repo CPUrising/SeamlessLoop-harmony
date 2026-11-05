@@ -17,7 +17,11 @@
 | `Decoder` | MP3 解码后实际采样位置与 encoder delay 处理 | `DecoderTests` | 通过 | `drmp3_get_pcm_frame_count` 已扣除 delay/padding，实测总帧数落在 (118000, 124000)；`manifest.json` 仍待回填精确值 |
 | `Transport` | T13 暂停恢复 | `TransportTests` | 未执行 | 代码未实现（任务 5.2） |
 | `Transport` | T14 按采样点跳转（解码侧 clamp） | `DecoderTests` | 部分通过 | clamp 已实测；FIFO 清空待任务 5.2 |
-| `RingBuffer` | T17 欠载静音填充 | `RingBufferTests` | 通过 | 2026-11-05 实测：7 用例 / 103 断言 / 0 失败 |
+| `RingBuffer` | T17 第 1 条：欠载时继续输出静音填充 | `RingBufferTests` | 通过 | 2026-11-05 实测：7 用例 / 103 断言 / 0 失败 |
+| `AudioOutput` | 写回调数据规划（帧数换算 / 欠载判定 / 非对齐防护） | `AudioOutputLogicTests` | 通过 | 2026-11-05 实测：9 用例 / 528 断言 / 0 失败 |
+| `DecodeThread` | 持续解码、FIFO 满等待、停止语义 | `DecodeThreadTests` | 通过 | 2026-11-05 实测：7 用例 / 34 断言 / 0 失败；解出帧数与 manifest 完全一致 |
+| `RingBuffer` | T17 第 2 条：缓冲恢复后自动继续播放 | `RingBufferTests` | 通过 | 2026-11-05 实测：`testRecoversAfterUnderrun` + `testRecoversAfterUnderrunAcrossWrap`（含环绕边界）均通过 |
+| `AudioOutput` | T17 第 3 条：欠载事件回调上报 | — | 未执行 | **代码未接线**：`SetUnderrunCallback` 已实现但全仓库无调用点，上报链路不通。归属任务 5.3（napi 暴露事件） |
 | 听感验收 | T15 循环边界无静音间隙 | 人工听测 | 阻塞 | 需真机；合成 fixture 已就绪 |
 | 听感验收 | T16 循环边界无爆音 | 人工听测 | 阻塞 | 需真机；合成 fixture 相位连续性已数值验证 |
 | 听感验收 | T05 播放中改循环点无明显中断 | 人工听测 | 阻塞 | 需真机 |
@@ -30,6 +34,9 @@
 | 2026-11-04 | 合成 fixture 生成与相位连续性 | 通过 | [verify/0001](verify/0001-harmony-loop-kernel.md) 第 3 节 |
 | 2026-11-04 | CMake 链接 `libohaudio.so` / `libhilog_ndk.z.so`（任务 2.2） | 通过 | [verify/0001](verify/0001-harmony-loop-kernel.md) 第 3 节「任务 2.2 / 2.3 / 2.4 实测证据」；`llvm-readelf -d libentry.so` 的 NEEDED 列表 |
 | 2026-11-04 | napi 桥接 + ArkTS 按钮编译通过（任务 2.4） | 通过 | 同上；`CompileArkTS` Finished，HAP 内含 `libentry.so` |
-| 2026-11-05 | `RingBufferTests`（T17 欠载静音） | 通过 | [verify/0001](verify/0001-harmony-loop-kernel.md) 第 3 节；`artifacts/verify-0001-harmony-loop-kernel-20261105-102022.log` |
+| 2026-11-05 | `RingBufferTests`（T17 第 1 条：欠载静音填充） | 通过 | [verify/0001](verify/0001-harmony-loop-kernel.md) 第 3 节；`artifacts/verify-0001-harmony-loop-kernel-20261105-102022.log` |
 | 2026-11-05 | `DecoderTests`（T12 格式上报 + T14 解码侧 clamp） | 通过 | 同上；10 用例 / 50 断言 / 0 失败 |
 | 2026-11-05 | 本机单测链路打通（`verify.ps1 --scope unit` 首次真实执行） | 通过 | 同上；`cmake + ctest` 2 套件全通过 |
+| 2026-11-05 | `AudioOutputLogicTests`（写回调规划） | 通过 | [verify/0001](verify/0001-harmony-loop-kernel.md) 第 3 节；`artifacts/verify-0001-harmony-loop-kernel-20261105-103408.log` |
+| 2026-11-05 | `DecodeThreadTests`（解码线程） | 通过 | 同上；7 用例 / 34 断言 / 0 失败 |
+| 2026-11-05 | `RingBufferTests`（T17 第 2 条：欠载后恢复继续播放） | 通过 | `artifacts/verify-0001-harmony-loop-kernel-20261105-112403.log`；含环绕边界用例 |

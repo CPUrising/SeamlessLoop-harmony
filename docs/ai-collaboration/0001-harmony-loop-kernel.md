@@ -12,6 +12,8 @@
 | 2026-11-04 | 包名 `com.example.*` 改为 `com.cpu.*` | 不改其他配置 |
 | 2026-11-04 | 按 tasks.md 推进任务 2.2 / 2.3 / 2.4：CMake 链接 OHAudio 与 hilog、AudioOutput 正弦波冒烟、napi 桥接 + ArkTS 按钮 | 不做解码、不做循环、不做数据库、不做 UI 美化；2.5 真机听测跳过 |
 | 2026-11-05 | 按 tasks.md 推进任务 3.1 / 3.2 / 3.3：引入 dr_libs（仅 wav/mp3）、实现 AudioDecoder、实现 RingBuffer；建立 cpp/tests 与本机 ctest 链路 | 不引入 flac/vorbis、不实现解码线程与循环逻辑、不做进度计算、不引入第三方测试框架 |
+| 2026-11-05 | 按 tasks.md 推进任务 3.4 / 3.5：实现 DecodeThread、写回调改从 FIFO 取数并上报欠载；补充两组单测 | 不实现循环跳转（属 4.2）、不做进度计算、不改 ArkTS 页面 |
+| 2026-11-05 | 按 tasks.md 推进任务 4.1：实现 `LoopConfig` 的循环点校验与归一化，补 `LoopConfigTests` | 不实现循环跳转与计数（属 4.2 / 4.3）、不做运行时改点（属 4.4）、不改 UI |
 
 ## 2. AI 产出
 
@@ -27,6 +29,10 @@
 | UI（任务 2.4） | `entry/src/main/ets/pages/Index.ets`（单个按钮触发 `startTone()` / `stopTone()`） |
 | Native（任务 3.1~3.3） | `cpp/third_party/{dr_wav.h,dr_mp3.h,dr_libs_impl.c}`、`cpp/audio_decoder.{h,cpp}`、`cpp/ring_buffer.{h,cpp}` |
 | 测试（任务 3.x） | `cpp/tests/{test_common.h,ring_buffer_test.cpp,audio_decoder_test.cpp}`；`cpp/CMakeLists.txt` 增加 `BUILD_TESTS` 双路径 |
+| Native（任务 3.4~3.5） | `cpp/decode_thread.{h,cpp}`、`cpp/audio_output_logic.h`；`cpp/audio_output.{h,cpp}` 改为 FIFO 驱动 |
+| 测试（任务 3.4~3.5） | `cpp/tests/{audio_output_logic_test.cpp,decode_thread_test.cpp}` |
+| Native（任务 4.1） | `cpp/loop_config.{h,cpp}` |
+| 测试（任务 4.1） | `cpp/tests/loop_config_test.cpp`；`cpp/CMakeLists.txt` 增加 `LoopConfigTests` |
 
 关键决策记录在 `openspec/changes/0001-harmony-loop-kernel/design.md`（8 条决策，含放弃的方案）。
 
@@ -42,6 +48,9 @@
 | 2026-11-04 | 人类确认本机无真机（`hdc list targets` 为空），不尝试安装与听测，2.5 登记为阻塞 |
 | 2026-11-05 | 人类接入真机 HUAWEI MRT-AL10（API 26），安装报 `no signature file`；随后断开连接 |
 | 2026-11-05 | 人类确认 dr_libs 只引入 wav/mp3、单测用裸断言 + ctest（不引入第三方框架） |
+| 2026-11-05 | 人工审查发现：`verify.ps1` 原注释把「观察到一次挂起」写成「daemon 启动会挂起」，属过度断言；已改为事实陈述（根因未定位） |
+| 2026-11-05 | 人工审查要求：单测首次跑出失败后，先确认是实现错还是断言错，再修；本次确认为断言错（B1），实现未改语义，仅补注释澄清 |
+| 2026-11-05 | 人工审查指出 T17 台账不准确：原「阻塞」实为代码未接线（`SetUnderrunCallback` 无调用点），且第 2 条「恢复后继续播放」完全漏记。已拆条重记并补测 |
 
 ## 4. 回归结果
 
@@ -55,5 +64,7 @@
 | 2026-11-04 | `llvm-readelf -d libentry.so` | PASS（NEEDED 含 `libohaudio.so`、`libhilog_ndk.z.so`） | 同上报告第 3 节 |
 | 2026-11-05 | `verify.ps1 --change 0001-harmony-loop-kernel`（任务 3.1~3.3 后） | PASS（4 steps, 0 failed；单测 2 套件 / 153 断言） | `artifacts/verify-0001-harmony-loop-kernel-20261105-102022.log` |
 | 2026-11-05 | `ctest -C Release`（本机 MSVC） | PASS（RingBufferTests / DecoderTests 全通过） | 同上；`artifacts/native-build/` |
+| 2026-11-05 | `verify.ps1 --change 0001-harmony-loop-kernel`（任务 3.4~3.5 后） | PASS（4 steps, 0 failed；单测 4 套件 / 796 断言） | `artifacts/verify-0001-harmony-loop-kernel-20261105-112403.log` |
+| 2026-11-05 | `verify.ps1 --change 0001-harmony-loop-kernel`（任务 4.1 后） | PASS（4 steps, 0 failed；单测 5 套件 / 870 断言） | `artifacts/verify-0001-harmony-loop-kernel-20261105-115309.log` |
 
-未执行项：T01~T11、T13、T15~T17 为 `NOT RUN`（代码未实现）；任务 2.5 / 6.2 / 6.3 真机听测阻塞（签名未配置 + 真机已断开）。详见 `docs/verification-debt.md`。
+未执行项：T01、T05~T11、T13、T15~T16 为 `NOT RUN`（代码未实现）；T17 第 3 条（事件上报）代码未接线；任务 2.5 / 6.2 / 6.3 真机听测阻塞（真机已断开）。详见 `docs/verification-debt.md`。

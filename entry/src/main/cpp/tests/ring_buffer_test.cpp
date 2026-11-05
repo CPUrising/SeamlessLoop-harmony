@@ -134,6 +134,71 @@ TEST_CASE(testTwoSecondCapacityMath)
     CHECK_EQ(rb.AvailableToWrite(), static_cast<size_t>(384000));
 }
 
+// T17 第 2 条：缓冲恢复后自动继续播放。
+//
+// 场景：先让消费者把 FIFO 读空（触发欠载），生产者再写入新数据，
+// 消费者必须能继续读到新数据，且内容正确、无残留错位。
+TEST_CASE(testRecoversAfterUnderrun)
+{
+    slh::RingBuffer rb(32);
+
+    // 阶段 1：写入 16 字节后读空，模拟欠载发生。
+    const std::vector<uint8_t> first = MakePattern(16, 10);
+    CHECK_EQ(rb.Write(first.data(), first.size()), static_cast<size_t>(16));
+
+    uint8_t out[32];
+    std::memset(out, 0xFF, sizeof(out));
+    CHECK_EQ(rb.ReadOrSilence(out, sizeof(out)), static_cast<size_t>(16));
+    for (size_t i = 0; i < 16; ++i) {
+        CHECK_EQ(out[i], first[i]);
+    }
+    for (size_t i = 16; i < sizeof(out); ++i) {
+        CHECK_EQ(out[i], static_cast<uint8_t>(0));
+    }
+    // 此时已欠载：FIFO 空。
+    CHECK_EQ(rb.AvailableToRead(), static_cast<size_t>(0));
+
+    // 阶段 2：生产者恢复供数（模拟解码线程继续写）。
+    const std::vector<uint8_t> second = MakePattern(20, 200);
+    CHECK_EQ(rb.Write(second.data(), second.size()), static_cast<size_t>(20));
+    CHECK_EQ(rb.AvailableToRead(), static_cast<size_t>(20));
+
+    // 阶段 3：消费者继续读，必须读到恢复后的新数据（而不是旧数据或错位数据）。
+    uint8_t out2[20];
+    CHECK_EQ(rb.Read(out2, sizeof(out2)), static_cast<size_t>(20));
+    for (size_t i = 0; i < 20; ++i) {
+        CHECK_EQ(out2[i], second[i]);
+    }
+    CHECK_EQ(rb.AvailableToRead(), static_cast<size_t>(0));
+}
+
+// T17 第 2 条（环绕场景）：欠载点恰好落在环绕边界后仍能正确恢复。
+TEST_CASE(testRecoversAfterUnderrunAcrossWrap)
+{
+    slh::RingBuffer rb(16);
+
+    // 先写 12 字节并读走 8 字节，使写指针停在 12、读指针停在 8。
+    const std::vector<uint8_t> a = MakePattern(12, 0);
+    CHECK_EQ(rb.Write(a.data(), a.size()), static_cast<size_t>(12));
+    uint8_t tmp[8];
+    CHECK_EQ(rb.Read(tmp, sizeof(tmp)), static_cast<size_t>(8));
+
+    // 读空剩余 4 字节 → 欠载。
+    uint8_t drain[4];
+    CHECK_EQ(rb.Read(drain, sizeof(drain)), static_cast<size_t>(4));
+    CHECK_EQ(rb.AvailableToRead(), static_cast<size_t>(0));
+
+    // 恢复写入 16 字节，必然跨过环绕点。
+    const std::vector<uint8_t> b = MakePattern(16, 50);
+    CHECK_EQ(rb.Write(b.data(), b.size()), static_cast<size_t>(16));
+
+    uint8_t out[16];
+    CHECK_EQ(rb.Read(out, sizeof(out)), static_cast<size_t>(16));
+    for (size_t i = 0; i < 16; ++i) {
+        CHECK_EQ(out[i], b[i]);
+    }
+}
+
 } // namespace
 
 int main()
@@ -146,5 +211,7 @@ int main()
     testClearReleasesAll_runner();
     testZeroCapacityIsSafe_runner();
     testTwoSecondCapacityMath_runner();
+    testRecoversAfterUnderrun_runner();
+    testRecoversAfterUnderrunAcrossWrap_runner();
     return Summarize("RingBufferTests");
 }

@@ -1,13 +1,14 @@
 /*
- * AudioOutput 实现：OHAudio renderer + 写回调输出 1 秒 440Hz 正弦波。
+ * AudioOutput 实现：OHAudio renderer + 写回调从 RingBuffer 取数。
  */
 
 #include "audio_output.h"
 
 #include <cmath>
-#include <thread>
 
 #include <hilog/log.h>
+
+#include "audio_output_logic.h"
 
 #undef LOG_DOMAIN
 #undef LOG_TAG
@@ -45,7 +46,23 @@ int32_t FillToneFrames(int16_t* out, int32_t frameCount, int64_t startFrame)
 
 AudioOutput::~AudioOutput()
 {
-    StopTone();
+    Stop();
+}
+
+void AudioOutput::SetRingBuffer(RingBuffer* ring)
+{
+    ring_.store(ring, std::memory_order_release);
+}
+
+void AudioOutput::SetUnderrunCallback(UnderrunCallback cb, void* userData)
+{
+    underrunUserData_.store(userData, std::memory_order_release);
+    underrunCb_.store(cb, std::memory_order_release);
+}
+
+int64_t AudioOutput::UnderrunBytes() const
+{
+    return underrunBytes_.load(std::memory_order_acquire);
 }
 
 OH_AudioData_Callback_Result AudioOutput::OnWriteData(OH_AudioRenderer* renderer, void* userData,
@@ -57,19 +74,49 @@ OH_AudioData_Callback_Result AudioOutput::OnWriteData(OH_AudioRenderer* renderer
         return AUDIO_DATA_CALLBACK_RESULT_INVALID;
     }
 
-    // 回调内只做内存写入：按 BlockAlign 计算帧数，余数字节补零。
-    const int32_t frameCount = audioDataSize / kToneBlockAlign;
-    const int64_t startFrame = self->toneFramePos_.load(std::memory_order_relaxed);
-    FillToneFrames(static_cast<int16_t*>(audioData), frameCount, startFrame);
-    self->toneFramePos_.store(startFrame + frameCount, std::memory_order_relaxed);
+    auto* out = static_cast<uint8_t*>(audioData);
 
-    const int32_t usedBytes = frameCount * kToneBlockAlign;
-    if (usedBytes < audioDataSize) {
-        auto* tail = static_cast<uint8_t*>(audioData) + usedBytes;
-        for (int32_t i = 0; i < audioDataSize - usedBytes; ++i) {
-            tail[i] = 0;
+    // G0 冒烟路径：没有 FIFO 时输出正弦波。
+    if (self->toneMode_.load(std::memory_order_acquire)) {
+        const int32_t frameCount = audioDataSize / kToneBlockAlign;
+        const int64_t startFrame = self->toneFramePos_.load(std::memory_order_relaxed);
+        FillToneFrames(reinterpret_cast<int16_t*>(audioData), frameCount, startFrame);
+        self->toneFramePos_.store(startFrame + frameCount, std::memory_order_relaxed);
+
+        const int32_t usedBytes = frameCount * kToneBlockAlign;
+        if (usedBytes < audioDataSize) {
+            std::memset(out + usedBytes, 0, static_cast<size_t>(audioDataSize - usedBytes));
+        }
+        return AUDIO_DATA_CALLBACK_RESULT_VALID;
+    }
+
+    RingBuffer* ring = self->ring_.load(std::memory_order_acquire);
+    if (ring == nullptr) {
+        // 既没有 FIFO 也不在冒烟模式：输出静音，保持流不断。
+        std::memset(out, 0, static_cast<size_t>(audioDataSize));
+        return AUDIO_DATA_CALLBACK_RESULT_VALID;
+    }
+
+    // 回调内只做内存操作：先读 FIFO，不足部分补静音（T17）。
+    const size_t available = ring->AvailableToRead();
+    const WritePlan plan = PlanWrite(audioDataSize, kToneBlockAlign, available);
+
+    int32_t written = 0;
+    if (plan.bytesFromFifo > 0) {
+        written = static_cast<int32_t>(ring->Read(out, static_cast<size_t>(plan.bytesFromFifo)));
+    }
+    if (written < audioDataSize) {
+        std::memset(out + written, 0, static_cast<size_t>(audioDataSize - written));
+    }
+
+    if (IsUnderrun(plan)) {
+        self->underrunBytes_.fetch_add(plan.silenceBytes, std::memory_order_acq_rel);
+        const UnderrunCallback cb = self->underrunCb_.load(std::memory_order_acquire);
+        if (cb != nullptr) {
+            cb(self->underrunUserData_.load(std::memory_order_acquire), plan.silenceBytes);
         }
     }
+
     return AUDIO_DATA_CALLBACK_RESULT_VALID;
 }
 
@@ -118,7 +165,7 @@ void AudioOutput::ReleaseRendererLocked()
     }
 }
 
-int32_t AudioOutput::StartTone()
+int32_t AudioOutput::Start()
 {
     std::lock_guard<std::mutex> lock(mutex_);
 
@@ -127,35 +174,47 @@ int32_t AudioOutput::StartTone()
         return ret;
     }
 
-    toneFramePos_.store(0, std::memory_order_relaxed);
-    running_.store(true, std::memory_order_relaxed);
-
+    running_.store(true, std::memory_order_release);
     const OH_AudioStream_Result startRet = OH_AudioRenderer_Start(renderer_);
     if (startRet != AUDIOSTREAM_SUCCESS) {
         OH_LOG_ERROR(LOG_APP, "start renderer failed, ret=%{public}d", static_cast<int>(startRet));
-        running_.store(false, std::memory_order_relaxed);
+        running_.store(false, std::memory_order_release);
         ReleaseRendererLocked();
         return static_cast<int32_t>(startRet);
     }
 
-    OH_LOG_INFO(LOG_APP, "tone started: %{public}d Hz, %{public}d frames",
-                static_cast<int>(kToneFrequencyHz), static_cast<int>(kToneDurationFrames));
+    OH_LOG_INFO(LOG_APP, "renderer started: %{public}d Hz, %{public}d ch, %{public}d Hz tone fallback",
+                static_cast<int>(kToneSampleRate), static_cast<int>(kToneChannelCount),
+                static_cast<int>(kToneFrequencyHz));
     return AUDIOSTREAM_SUCCESS;
 }
 
-void AudioOutput::StopTone()
+int32_t AudioOutput::StartTone()
+{
+    toneFramePos_.store(0, std::memory_order_release);
+    toneMode_.store(true, std::memory_order_release);
+    const int32_t ret = Start();
+    if (ret != AUDIOSTREAM_SUCCESS) {
+        toneMode_.store(false, std::memory_order_release);
+    }
+    return ret;
+}
+
+void AudioOutput::Stop()
 {
     {
         std::lock_guard<std::mutex> lock(mutex_);
-        running_.store(false, std::memory_order_relaxed);
+        running_.store(false, std::memory_order_release);
         ReleaseRendererLocked();
     }
-    OH_LOG_INFO(LOG_APP, "tone stopped");
+    toneMode_.store(false, std::memory_order_release);
+    OH_LOG_INFO(LOG_APP, "renderer stopped, total underrun bytes=%{public}lld",
+                static_cast<long long>(UnderrunBytes()));
 }
 
 bool AudioOutput::IsRunning() const
 {
-    return running_.load(std::memory_order_relaxed);
+    return running_.load(std::memory_order_acquire);
 }
 
 } // namespace slh
