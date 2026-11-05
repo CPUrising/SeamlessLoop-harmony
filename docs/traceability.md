@@ -23,7 +23,7 @@
 | T14 | 按采样点跳转 | 同上 → `T14` | `TransportTests.testSeekClampsAndAligns` + `testSeekWhilePlayingFlushesBuffer` | 通过 |
 | T15 | 循环边界无静音间隙 | 同上 → `T15` | 离线波形分析 + 真机听测 | 未实现 |
 | T16 | 循环边界无爆音 | 同上 → `T16` | 离线波形分析 + 真机听测 | 未实现 |
-| T17 | 缓冲欠载可恢复 | 同上 → `T17` | `RingBufferTests` + `AudioOutputLogicTests` | 部分通过（第 1、2 条已通过；第 3 条事件上报未接线） |
+| T17 | 缓冲欠载可恢复 | 同上 → `T17` | `RingBufferTests` + `AudioOutputLogicTests` + `underrun` 事件 | 部分通过（第 1、2 条已通过；第 3 条事件已接线，真机端到端待 6.2） |
 
 ## 状态取值
 
@@ -43,3 +43,4 @@
 | 2026-11-05 | `0001-harmony-loop-kernel` | 任务 4.5 完成：新增 `LoopStreamTests`（5 用例 / 36 断言），T07 → 通过 |
 | 2026-11-05 | `0001-harmony-loop-kernel` | 任务 5.1 完成：新增 `progress.h` 与 `ProgressTests`（8 用例 / 45 断言），T10 / T11 → 通过 |
 | 2026-11-05 | `0001-harmony-loop-kernel` | 任务 5.2 完成：新增 `PlaybackEngine` 与 `TransportTests`（10 用例 / 84 断言），T13 / T14 → 通过 |
+| 2026-11-05 | `0001-harmony-loop-kernel` | 任务 5.3 完成：napi 暴露完整 API 与 `loop` / `end` / `underrun` 事件（ThreadSafeFunction）；T17 第 3 条已接线，真机端到端待 6.2 |

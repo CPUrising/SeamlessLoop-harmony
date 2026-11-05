@@ -83,11 +83,14 @@ public:
 
     size_t TotalRead() const { return totalRead_.load(); }
 
-    // 清空已记录的观测值，便于在改点之后只看新数据。
+    // 开始观察「下一次丢弃生效之后」的数据。
+    // 不能只清标志：改点请求发出后，消费者可能仍读到改点前的残留数据并抢先记录，
+    // 造成偶发失败。这里记下期望的丢弃代次，只有代次达标后才开始记录。
     void ResetObservation()
     {
         totalRead_.store(0);
         observed_.store(false);
+        expectedFlush_.store(ring_->FlushCount() + 1);
     }
 
     int16_t FirstSampleAfterReset() const { return firstSample_.load(); }
@@ -103,6 +106,10 @@ private:
                 std::this_thread::sleep_for(std::chrono::milliseconds(1));
                 continue;
             }
+            // 丢弃尚未生效时读到的都是旧数据，跳过。
+            if (ring_->FlushCount() < expectedFlush_.load()) {
+                continue;
+            }
             if (!observed_.load()) {
                 firstSample_.store(*reinterpret_cast<const int16_t*>(buf.data()));
                 observed_.store(true);
@@ -116,6 +123,7 @@ private:
     std::atomic<size_t> totalRead_{0};
     std::atomic<bool> observed_{false};
     std::atomic<int16_t> firstSample_{0};
+    std::atomic<uint64_t> expectedFlush_{0};
     std::thread thread_;
 };
 

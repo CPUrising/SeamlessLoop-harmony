@@ -54,6 +54,35 @@ void AudioOutput::SetRingBuffer(RingBuffer* ring)
     ring_.store(ring, std::memory_order_release);
 }
 
+int32_t AudioOutput::Configure(int32_t sampleRate, int32_t channels)
+{
+    if (sampleRate <= 0 || channels <= 0) {
+        return -1;
+    }
+    std::lock_guard<std::mutex> lock(mutex_);
+    // 已建流时格式无法原地修改，先释放，下次 Start 会按新格式重建。
+    ReleaseRendererLocked();
+    running_.store(false, std::memory_order_release);
+    sampleRate_.store(sampleRate, std::memory_order_release);
+    channels_.store(channels, std::memory_order_release);
+    return 0;
+}
+
+int32_t AudioOutput::SampleRate() const
+{
+    return sampleRate_.load(std::memory_order_acquire);
+}
+
+int32_t AudioOutput::Channels() const
+{
+    return channels_.load(std::memory_order_acquire);
+}
+
+int32_t AudioOutput::BlockAlign() const
+{
+    return Channels() * static_cast<int32_t>(sizeof(int16_t));
+}
+
 void AudioOutput::SetUnderrunCallback(UnderrunCallback cb, void* userData)
 {
     underrunUserData_.store(userData, std::memory_order_release);
@@ -98,8 +127,10 @@ OH_AudioData_Callback_Result AudioOutput::OnWriteData(OH_AudioRenderer* renderer
     }
 
     // 回调内只做内存操作：先读 FIFO，不足部分补静音（T17）。
+    // BlockAlign 必须取当前渲染器格式，否则立体声文件会被按单声道切分。
+    const int32_t blockAlign = self->BlockAlign();
     const size_t available = ring->AvailableToRead();
-    const WritePlan plan = PlanWrite(audioDataSize, kToneBlockAlign, available);
+    const WritePlan plan = PlanWrite(audioDataSize, blockAlign, available);
 
     int32_t written = 0;
     if (plan.bytesFromFifo > 0) {
@@ -133,8 +164,8 @@ int32_t AudioOutput::EnsureRendererLocked()
         return static_cast<int32_t>(ret);
     }
 
-    OH_AudioStreamBuilder_SetSamplingRate(builder_, kToneSampleRate);
-    OH_AudioStreamBuilder_SetChannelCount(builder_, kToneChannelCount);
+    OH_AudioStreamBuilder_SetSamplingRate(builder_, sampleRate_.load(std::memory_order_acquire));
+    OH_AudioStreamBuilder_SetChannelCount(builder_, channels_.load(std::memory_order_acquire));
     OH_AudioStreamBuilder_SetSampleFormat(builder_, AUDIOSTREAM_SAMPLE_S16LE);
     OH_AudioStreamBuilder_SetEncodingType(builder_, AUDIOSTREAM_ENCODING_TYPE_RAW);
     OH_AudioStreamBuilder_SetRendererInfo(builder_, AUDIOSTREAM_USAGE_MUSIC);
@@ -184,7 +215,7 @@ int32_t AudioOutput::Start()
     }
 
     OH_LOG_INFO(LOG_APP, "renderer started: %{public}d Hz, %{public}d ch, %{public}d Hz tone fallback",
-                static_cast<int>(kToneSampleRate), static_cast<int>(kToneChannelCount),
+                static_cast<int>(SampleRate()), static_cast<int>(Channels()),
                 static_cast<int>(kToneFrequencyHz));
     return AUDIOSTREAM_SUCCESS;
 }

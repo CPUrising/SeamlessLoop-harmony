@@ -6,15 +6,15 @@
 |---|---|
 | change id | `0001-harmony-loop-kernel` |
 | 执行人 | AI 智能体（TRAE） |
-| 执行时间 | 2026-11-05 18:55（最近一次） |
+| 执行时间 | 2026-11-05 19:08（最近一次） |
 | 机器 / 系统 | Windows 11（开发机） |
 | 工具链版本 | OpenSpec CLI 1.14.3；CMake 4.2.3；MSVC 19.44.35228.0；Python 3.14 + numpy 2.5.3；ffmpeg N-122110；DevEco Studio 26.0.0（build DS-261.23567.138.36.2600865）；hvigor 6.26.9 |
-| 运行环境 | HarmonyOS SDK 26.0.0.105（apiVersion 26，Release）；hdc 3.2.0f；**真机在线（MRT-AL10，序列号 5KTUT25424016774，API 26，系统 7.0.0.111(SP12C00E111R5P2)）** |
+| 运行环境 | HarmonyOS SDK 26.0.0.105（apiVersion 26，Release）；hdc 3.2.0f；**真机 MRT-AL10（序列号 5KTUT25424016774，API 26，系统 7.0.0.111(SP12C00E111R5P2)）于 19:06 断开，当前 `hdc list targets` 为空** |
 | 命令 | `powershell -File scripts/verify.ps1 --change 0001-harmony-loop-kernel` |
-| 日志 | `artifacts/verify-0001-harmony-loop-kernel-20261105-185518.log` |
+| 日志 | `artifacts/verify-0001-harmony-loop-kernel-20261105-190816.log` |
 | 结果包 | `fixtures/synthetic/` 3 个音频 + `fixtures/manifest.json`；`entry/build/default/outputs/default/entry-default-signed.hap`（3 364 578 B，含 `libs/arm64-v8a/libentry.so`、`libs/x86_64/libentry.so`） |
 
-**本次验证范围**：任务 1.1、2.2~2.5、3.1~3.5、4.1~4.5、5.1~5.2 已完成。本机单元测试 10 套件 / 1172 断言全通过；真机 G0 冒烟（2.5）已实测通过。任务 6.2 / 6.3 真机听测仍阻塞（循环播放链路未完全接通 UI）。功能场景 T15~T16 仍未实现；T05 的 200ms 听感条款待 6.3。
+**本次验证范围**：任务 1.1、2.2~2.5、3.1~3.5、4.1~4.5、5.1~5.3 已完成。本机单元测试 10 套件 / 1172 断言全通过；真机 G0 冒烟（2.5）已实测通过。任务 6.2 / 6.3 真机听测仍阻塞（真机于 19:06 断开，且最小界面未实现）。功能场景 T15~T16 仍未实现；T05 的 200ms 听感条款待 6.3；T17 第 3 条事件已接线但未真机验证。
 
 ## 2. 需求覆盖
 
@@ -36,7 +36,7 @@
 | Playback Transport Control | T14 | `TransportTests.testSeekClampsAndAligns` + `testSeekWhilePlayingFlushesBuffer` | **PASS** | 未播放时 seek 精确落点；`-1 → 0`、`total+999999 → total`；播放中 seek 后 FIFO 丢弃请求被消费者应用，无残留 |
 | Continuous Audio Output | T15 | 离线波形分析 + 真机听测 | NOT RUN | 无真机；合成 fixture 已就绪 |
 | Continuous Audio Output | T16 | 离线波形分析 + 真机听测 | NOT RUN | 无真机；合成 fixture 已就绪，相位连续性已数值验证 |
-| Continuous Audio Output | T17 | `RingBufferTests` + `AudioOutputLogicTests` | **部分通过** | 第 1 条（静音填充）、第 2 条（恢复后继续播放）已通过；第 3 条（事件上报）代码未接线 |
+| Continuous Audio Output | T17 | `RingBufferTests` + `AudioOutputLogicTests` + `underrun` 事件 | **部分通过** | 第 1 条（静音填充）、第 2 条（恢复后继续播放）已通过；第 3 条事件已在 napi 层接线（`on('underrun')`），真机端到端待 6.2 |
 
 ## 3. 回归
 
@@ -209,6 +209,19 @@
 | 重新加载 | 换文件后总帧数、采样率、声道数全部更新，位置归零 |
 | HAP 构建（回归） | BUILD SUCCESSFUL；`playback_engine.cpp` 已编入 `libentry.so` |
 
+### 任务 5.3 实测证据（2026-11-05 19:08）
+
+| 检查项 | 实测结果 |
+|---|---|
+| napi 暴露接口 | `load / play / pause / stop / seekToSample / setLoopPoints / setLooping / getProgress / getLoopCount / getState / getFormat / on / off`，另保留 G0 的 `startTone / stopTone / isToneRunning` |
+| 事件通道 | `loop`（累计次数）、`end`（无参）、`underrun`（本次静音字节数），均经 `napi_create_threadsafe_function` 投递到 JS 线程 |
+| 音频线程安全 | 解码线程与 OHAudio 回调线程只调 `napi_call_threadsafe_function(..., napi_tsfn_nonblocking)`，队列满时丢弃事件而非阻塞 |
+| 渲染器格式 | 新增 `AudioOutput::Configure(sampleRate, channels)`；写回调的 BlockAlign 改为取当前格式，避免立体声文件被按单声道切分 |
+| T17 第 3 条接线 | `AttachEngineToOutput()` 中调用 `SetUnderrunCallback(OnUnderrunEvent, nullptr)`，全链路已通（此前无调用点） |
+| 类型声明 | `types/libentry/index.d.ts` 与实现一一对应，含 `AudioFormat` 与 `EventName` |
+| HAP 构建 | **PASS**（BUILD SUCCESSFUL，`libentry.so` 含新桥接层） |
+| 真机端到端 | **NOT RUN**：真机于 19:06 断开（`hdc list targets` 为空），无法安装验证事件回调与真实播放 |
+
 ### 测试过程中发现并修正的缺陷
 
 | 编号 | 缺陷 | 处理 |
@@ -219,6 +232,7 @@
 | B4 | 任务 5.2 首跑 1 处失败：播放中 seek 后断言 `DecodeFrame() == 90000`，实测 114576 | 确认为**断言错误**：解码线程 seek 后立即预填 2 秒 FIFO，位置必然前移。改为区间断言 `[90000, 90000+88200]` |
 | B5 | 任务 5.2 二跑 `testStopResetsToStart` 失败：`AvailableToRead()` 残留 78096 字节 | 确认为**实现缺陷**：`Stop()` 在消费者仍在运行时直接 `Clear()`，与 `Read()` 竞争写 `readCounter_`，破坏 SPSC 前提。抽出 `FlushBuffer()`：优先 `RequestFlush` 等消费者应用，超时才直接 `Clear()` |
 | B6 | 任务 5.2 三跑 `ProgressTests` 出现进度回退（3 处失败） | 确认为**实现缺陷**：`decodedPosition_` 与 `loopCounter_` 不是同一原子快照，循环跳转瞬间读到不一致组合导致读数回退，违反 T10。新增 `lastPlayback_` 单调保护，并在 seek / 改点 / 计数重置时放开 |
+| B7 | 任务 5.3 验证时 `LoopRangeChangeTests.testLoopStillWorksAfterRangeChange` 偶发失败（读到改点前的残留采样） | 确认为**测试竞态**：`ResetObservation()` 只清标志，消费者可能仍读到改点前的数据并抢先记录。改为记录期望的丢弃代次，只有 `FlushCount` 达标后才开始观测；连续 5 次运行均通过 |
 
 ### 构建日志中的已知告警（非缺陷）
 
@@ -263,7 +277,7 @@
 - [x] 需修复后复验（Build 阶段进行中，非归档态）
 - [ ] 需人类决策
 
-**说明**：Plan 阶段产物（proposal / design / tasks / delta spec）已完成并通过严格校验；合成 fixture 已生成并通过相位连续性数值检查；HAP 构建、真机安装、启动与 G0 正弦波听测均已实测通过。当前已完成任务 1.1、2.2~2.5、3.1~3.5、4.1~4.5 与 5.1~5.2，下一步为任务 5.3（napi 完整 API 与事件）。任务 6.2 / 6.3 的循环听测需等最小界面（6.1）完成后再执行。
+**说明**：Plan 阶段产物（proposal / design / tasks / delta spec）已完成并通过严格校验；合成 fixture 已生成并通过相位连续性数值检查；HAP 构建、真机安装、启动与 G0 正弦波听测均已实测通过。当前已完成任务 1.1、2.2~2.5、3.1~3.5、4.1~4.5 与 5.1~5.3（播放内核与桥接层全部完成），下一步为任务 6.1（最小界面）。任务 6.2 / 6.3 的循环听测需真机重新接入且界面就绪后执行。
 
 已确认的决策：HarmonyOS SDK **26.0.0**、真实素材由用户提供、包名 `com.cpu.seamlessloopharmony`。
 

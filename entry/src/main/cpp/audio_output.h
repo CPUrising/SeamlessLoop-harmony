@@ -53,6 +53,16 @@ public:
     // 设置数据源。必须在 Start 之前调用；Start 之后更换需先 Stop。
     void SetRingBuffer(RingBuffer* ring);
 
+    // 配置渲染器格式（采样率 / 声道数）。必须在 Start 之前调用；
+    // 若渲染器已存在会先释放，避免格式与已建流不一致。
+    // 返回 0 表示成功，非 0 为参数错误。
+    int32_t Configure(int32_t sampleRate, int32_t channels);
+
+    int32_t SampleRate() const;
+    int32_t Channels() const;
+    // 一帧字节数 = 声道数 × 2（S16LE）。
+    int32_t BlockAlign() const;
+
     // 设置欠载事件回调（可选）。
     void SetUnderrunCallback(UnderrunCallback cb, void* userData);
 
@@ -87,6 +97,10 @@ private:
     std::atomic<RingBuffer*> ring_{nullptr};
     std::atomic<bool> toneMode_{false};
     std::atomic<int64_t> toneFramePos_{0};
+
+    // 渲染器格式。默认取冒烟音参数，加载真实文件时由 Configure 覆盖。
+    std::atomic<int32_t> sampleRate_{kToneSampleRate};
+    std::atomic<int32_t> channels_{kToneChannelCount};
 
     std::atomic<UnderrunCallback> underrunCb_{nullptr};
     std::atomic<void*> underrunUserData_{nullptr};
