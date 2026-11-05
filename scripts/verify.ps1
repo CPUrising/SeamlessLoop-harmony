@@ -93,7 +93,9 @@ if ($Scope -eq "all" -or $Scope -eq "build") {
     }
     if (Test-Path $hvigorw) {
         Invoke-Step "hvigorw assembleHap" {
-            & $hvigorw --mode module -p product=default assembleHap
+            # 2026-11-04 22:07 观察到一次 daemon 模式挂起（14 分钟无输出，根因未定位，之后未复现）。
+            # --no-daemon 是官方降级方式，且不依赖常驻进程状态，故验证入口固定使用。
+            & $hvigorw --mode module -p product=default --no-daemon assembleHap
         }
     } else {
         Write-Log ""

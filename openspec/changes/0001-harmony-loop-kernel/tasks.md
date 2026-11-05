@@ -12,17 +12,17 @@
 
 ## 2. 工程骨架与 OHAudio 冒烟
 
-- [x] 2.1 创建 HarmonyOS Stage 工程：`AppScope` + `entry` 单模块，`module.json5` 声明 Native 库（工程已创建并可 `assembleHap` 构建成功；Native 库声明待任务 2.2 一并完成）
-- [ ] 2.2 配置 `entry/src/main/cpp/CMakeLists.txt`，链接 `libohaudio.so` 与 `libhilog_ndk.z.so`
-- [ ] 2.3 实现 `AudioOutput`：构建 OHAudio renderer，写回调输出 1 秒 440Hz 正弦波
-- [ ] 2.4 napi 桥接暴露 `startTone() / stopTone()`，ArkTS 页面加一个按钮触发
+- [x] 2.1 创建 HarmonyOS Stage 工程：`AppScope` + `entry` 单模块，`module.json5` 声明 Native 库（工程已创建并可 `assembleHap` 构建成功；Native 库声明已在任务 2.2 完成）
+- [x] 2.2 配置 `entry/src/main/cpp/CMakeLists.txt`，链接 `libohaudio.so` 与 `libhilog_ndk.z.so`
+- [x] 2.3 实现 `AudioOutput`：构建 OHAudio renderer，写回调输出 1 秒 440Hz 正弦波
+- [x] 2.4 napi 桥接暴露 `startTone() / stopTone()`，ArkTS 页面加一个按钮触发
 - [ ] 2.5 真机验证：点击按钮听到 1 秒正弦波，无爆音（G0 冒烟）
 
 ## 3. 解码与连续播放
 
-- [ ] 3.1 引入 dr_libs（wav/mp3）到 `entry/src/main/cpp/third_party/`，保持与原项目同版本
-- [ ] 3.2 实现 `AudioDecoder`：加载文件，输出采样率、声道数、总采样数，支持按采样点 seek
-- [ ] 3.3 实现 `RingBuffer`（单生产者单消费者，容量 2 秒）
+- [x] 3.1 引入 dr_libs（wav/mp3）到 `entry/src/main/cpp/third_party/`，保持与原项目同版本
+- [x] 3.2 实现 `AudioDecoder`：加载文件，输出采样率、声道数、总采样数，支持按采样点 seek
+- [x] 3.3 实现 `RingBuffer`（单生产者单消费者，容量 2 秒）
 - [ ] 3.4 实现解码线程：持续解码并写入 FIFO，FIFO 满时等待
 - [ ] 3.5 写回调改为从 FIFO 取数据；FIFO 空时写静音并上报欠载事件（覆盖 T17）
 

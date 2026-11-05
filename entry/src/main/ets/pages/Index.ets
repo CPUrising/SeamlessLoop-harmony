@@ -1,23 +1,44 @@
+import { startTone, stopTone, isToneRunning } from 'libentry.so';
+import { hilog } from '@kit.PerformanceAnalysisKit';
+
+const DOMAIN = 0x0001;
+const TAG = 'SLH_Index';
+
 @Entry
 @Component
 struct Index {
-  @State message: string = 'Hello World';
+  @State message: string = 'G0 冒烟：OHAudio 正弦波';
+  @State toneRunning: boolean = false;
+
+  private toggleTone(): void {
+    if (this.toneRunning) {
+      stopTone();
+      this.toneRunning = isToneRunning();
+      this.message = '已停止';
+      hilog.info(DOMAIN, TAG, '%{public}s', 'stopTone called');
+      return;
+    }
+    const ret: number = startTone();
+    this.toneRunning = isToneRunning();
+    this.message = ret === 0 ? '正在播放 440Hz / 1 秒' : `启动失败，错误码 ${ret}`;
+    hilog.info(DOMAIN, TAG, 'startTone ret=%{public}d', ret);
+  }
 
   build() {
-    RelativeContainer() {
+    Column({ space: 24 }) {
       Text(this.message)
-        .id('HelloWorld')
-        .fontSize($r('app.float.page_text_font_size'))
+        .fontSize(20)
         .fontWeight(FontWeight.Bold)
-        .alignRules({
-          center: { anchor: '__container__', align: VerticalAlign.Center },
-          middle: { anchor: '__container__', align: HorizontalAlign.Center }
-        })
+        .textAlign(TextAlign.Center)
+
+      Button(this.toneRunning ? '停止' : '播放 1 秒正弦波')
+        .width(220)
         .onClick(() => {
-          this.message = 'Welcome';
+          this.toggleTone();
         })
     }
-    .height('100%')
     .width('100%')
+    .height('100%')
+    .justifyContent(FlexAlign.Center)
   }
 }
