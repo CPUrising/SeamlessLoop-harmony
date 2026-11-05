@@ -6,6 +6,8 @@
 
 #include <chrono>
 
+#include "progress.h"
+
 namespace slh {
 namespace {
 
@@ -143,20 +145,42 @@ void DecodeThread::ResetLoopCount()
     loopCounter_.Reset();
 }
 
+int64_t DecodeThread::BufferedFrames() const
+{
+    if (decoder_ == nullptr || !decoder_->IsOpen()) {
+        return 0;
+    }
+    const int32_t channels = decoder_->Format().channels;
+    if (channels <= 0) {
+        return 0;
+    }
+    const size_t frameBytes = static_cast<size_t>(channels) * sizeof(int16_t);
+    return static_cast<int64_t>(ring_->AvailableToRead() / frameBytes);
+}
+
 int64_t DecodeThread::EstimatePlaybackFrame() const
 {
     if (decoder_ == nullptr || !decoder_->IsOpen()) {
         return 0;
     }
-    const int64_t channels = decoder_->Format().channels;
-    if (channels <= 0) {
+    // 解码位置减 FIFO 未消费部分，近似扬声器位置。
+    const int64_t position =
+        decodedPosition_.load(std::memory_order_acquire) - BufferedFrames();
+    return position > 0 ? position : 0;
+}
+
+int64_t DecodeThread::PlaybackFrame() const
+{
+    if (decoder_ == nullptr || !decoder_->IsOpen()) {
         return 0;
     }
-    // 解码位置减 FIFO 未消费部分，近似扬声器位置。
-    const int64_t bufferedFrames =
-        static_cast<int64_t>(ring_->AvailableToRead() / (static_cast<size_t>(channels) * sizeof(int16_t)));
-    const int64_t position = decodedPosition_.load(std::memory_order_acquire) - bufferedFrames;
-    return position > 0 ? position : 0;
+    // 用原始解码位置做补偿，而不是已扣减缓冲的估算值：
+    // 补偿量只与跳转次数有关，扣减缓冲必须放在补偿之后（见 progress.h）。
+    return ComputePlaybackFrame(decodedPosition_.load(std::memory_order_acquire),
+                                BufferedFrames(),
+                                loopStart_.load(std::memory_order_acquire),
+                                loopEnd_.load(std::memory_order_acquire),
+                                loopCounter_.Count());
 }
 
 void DecodeThread::RequestSeek(int64_t frame)

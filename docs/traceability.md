@@ -16,8 +16,8 @@
 | T07 | 关闭循环后的整曲播放 | 同上 → `T07` | `LoopStreamTests.testLoopDisabledStopsAtEnd` | 通过 |
 | T08 | 循环次数单调递增 | 同上 → `T08` | `LoopCounterTests.testCounterIncrementsAndResets` | 通过 |
 | T09 | 关闭循环时不上报循环事件 | 同上 → `T09` | `LoopCounterTests.testNoEventWhenDisabled` | 通过 |
-| T10 | 进度在循环边界保持连续 | 同上 → `T10` | `ProgressTests.testProgressContinuousAcrossLoop` | 未实现 |
-| T11 | 进度在 Intro 阶段不误补偿 | 同上 → `T11` | `ProgressTests.testNoCompensationDuringIntro` | 未实现 |
+| T10 | 进度在循环边界保持连续 | 同上 → `T10` | `ProgressTests.testProgressMonotonicAcrossRealLoops` | 通过 |
+| T11 | 进度在 Intro 阶段不误补偿 | 同上 → `T11` | `ProgressTests.testNoCompensationDuringIntro` | 通过 |
 | T12 | 加载后可播放 | 同上 → `T12` | `DecoderTests.testLoadReportsFormat` | 通过 |
 | T13 | 暂停后恢复不丢位置 | 同上 → `T13` | `TransportTests.testPauseResumeKeepsPosition` | 未实现 |
 | T14 | 按采样点跳转 | 同上 → `T14` | `TransportTests.testSeekClampsAndAligns` | 部分通过（解码侧 clamp 已通过；FIFO 清空待 5.2） |
@@ -41,3 +41,4 @@
 | 2026-11-05 | `0001-harmony-loop-kernel` | 任务 4.3 完成：新增 `LoopCounterTests`（7 用例 / 46 断言），T08 / T09 → 通过 |
 | 2026-11-05 | `0001-harmony-loop-kernel` | 任务 4.4 完成：新增 `LoopRangeChangeTests`（5 用例 / 43 断言），T06 → 通过，T05 → 部分通过（200ms 听感条款待 6.3） |
 | 2026-11-05 | `0001-harmony-loop-kernel` | 任务 4.5 完成：新增 `LoopStreamTests`（5 用例 / 36 断言），T07 → 通过 |
+| 2026-11-05 | `0001-harmony-loop-kernel` | 任务 5.1 完成：新增 `progress.h` 与 `ProgressTests`（8 用例 / 45 断言），T10 / T11 → 通过 |

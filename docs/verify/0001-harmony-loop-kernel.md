@@ -6,15 +6,15 @@
 |---|---|
 | change id | `0001-harmony-loop-kernel` |
 | 执行人 | AI 智能体（TRAE） |
-| 执行时间 | 2026-11-05 18:37（最近一次） |
+| 执行时间 | 2026-11-05 18:48（最近一次） |
 | 机器 / 系统 | Windows 11（开发机） |
 | 工具链版本 | OpenSpec CLI 1.14.3；CMake 4.2.3；MSVC 19.44.35228.0；Python 3.14 + numpy 2.5.3；ffmpeg N-122110；DevEco Studio 26.0.0（build DS-261.23567.138.36.2600865）；hvigor 6.26.9 |
 | 运行环境 | HarmonyOS SDK 26.0.0.105（apiVersion 26，Release）；hdc 3.2.0f；**真机在线（MRT-AL10，序列号 5KTUT25424016774，API 26，系统 7.0.0.111(SP12C00E111R5P2)）** |
 | 命令 | `powershell -File scripts/verify.ps1 --change 0001-harmony-loop-kernel` |
-| 日志 | `artifacts/verify-0001-harmony-loop-kernel-20261105-183703.log` |
+| 日志 | `artifacts/verify-0001-harmony-loop-kernel-20261105-184809.log` |
 | 结果包 | `fixtures/synthetic/` 3 个音频 + `fixtures/manifest.json`；`entry/build/default/outputs/default/entry-default-signed.hap`（3 364 578 B，含 `libs/arm64-v8a/libentry.so`、`libs/x86_64/libentry.so`） |
 
-**本次验证范围**：任务 1.1、2.2~2.5、3.1~3.5、4.1~4.5 已完成。本机单元测试 8 套件 / 1043 断言全通过；真机 G0 冒烟（2.5）已实测通过。任务 6.2 / 6.3 真机听测仍阻塞（循环播放链路未完全接通 UI）。功能场景 T10~T11、T13、T15~T16 仍未实现；T05 的 200ms 听感条款待 6.3。
+**本次验证范围**：任务 1.1、2.2~2.5、3.1~3.5、4.1~4.5、5.1 已完成。本机单元测试 9 套件 / 1088 断言全通过；真机 G0 冒烟（2.5）已实测通过。任务 6.2 / 6.3 真机听测仍阻塞（循环播放链路未完全接通 UI）。功能场景 T13、T15~T16 仍未实现；T05 的 200ms 听感条款待 6.3。
 
 ## 2. 需求覆盖
 
@@ -29,8 +29,8 @@
 | Loop Configuration At Runtime | T07 | `LoopStreamTests.testLoopDisabledStopsAtEnd` | **PASS** | 循环播放中关闭循环后不再跳转，播到末尾停止推进，结束回调恰好触发一次；排空后写回调持续输出静音 |
 | Loop Cycle Reporting | T08 | `LoopCounterTests.testCounterIncrementsAndResets` | **PASS** | 真实循环跳转下计数与回调累计值一致（1,2,3…单调递增）；循环点变更后归零；`ResetLoopCount()` 后可重新从 1 计数 |
 | Loop Cycle Reporting | T09 | `LoopCounterTests.testNoEventWhenDisabled` | **PASS** | 设置区间但不开启循环，整曲播到末尾，`LoopCount == 0` 且回调一次未触发 |
-| Playback Progress Reporting | T10 | `ProgressTests.testProgressContinuousAcrossLoop` | NOT RUN | 代码未实现 |
-| Playback Progress Reporting | T11 | `ProgressTests.testNoCompensationDuringIntro` | NOT RUN | 代码未实现 |
+| Playback Progress Reporting | T10 | `ProgressTests.testProgressMonotonicAcrossRealLoops` | **PASS** | 真实循环 3 次以上，5ms 采样 45+ 次，进度单调不减、单步前跳未超过一个循环长度 |
+| Playback Progress Reporting | T11 | `ProgressTests.testNoCompensationDuringIntro` | **PASS** | Intro 阶段（跳转次数 0）进度严格等于解码位置；集成用例中 `PlaybackFrame() == EstimatePlaybackFrame()` |
 | Playback Transport Control | T12 | `DecoderTests.testLoadReportsFormat` | **PASS** | 实测 WAV 单声道/立体声与 MP3 均正确报出采样率、声道数、总采样数；起始位置为 0 |
 | Playback Transport Control | T13 | `TransportTests.testPauseResumeKeepsPosition` | NOT RUN | 代码未实现（任务 5.2） |
 | Playback Transport Control | T14 | `TransportTests.testSeekClampsAndAligns` | **部分通过** | 解码侧 clamp 已由 `DecoderTests.testSeekClampsOutOfRange` 验证；FIFO 清空（播放侧）待任务 5.2 |
@@ -45,7 +45,7 @@
 | 规范严格校验 | `openspec validate --all --strict` | **PASS**（1 passed, 0 failed） |
 | 合成 fixture 生成 | `python scripts/make-fixtures.py` | **PASS**（3 文件 + manifest，见下） |
 | 合成 fixture 相位连续性 | 离线 numpy 检查 | **PASS**（见 D5 说明） |
-| 全量单元测试 | `scripts/verify.ps1 --scope unit` | **PASS**（8 套件 / 1043 断言 / 0 失败） |
+| 全量单元测试 | `scripts/verify.ps1 --scope unit` | **PASS**（9 套件 / 1088 断言 / 0 失败） |
 | HAP 构建 | `hvigorw --mode module -p product=default --no-daemon assembleHap` | **PASS**（BUILD SUCCESSFUL，产出 signed HAP） |
 | Native 库链接 | `llvm-readelf -d libentry.so` | **PASS**（NEEDED 含 `libohaudio.so`、`libhilog_ndk.z.so`、`libace_napi.z.so`） |
 | 既有通过项是否回退 | 本变更为首次变更，无既有基线 | N/A |
@@ -175,6 +175,21 @@
 | 未登记回调 | 无结束回调时到达末尾不崩溃，`ReachedEnd` 正常置位 |
 | HAP 构建（回归） | BUILD SUCCESSFUL；结束上报逻辑已编入 `libentry.so` |
 
+### 任务 5.1 实测证据（2026-11-05 18:48）
+
+| 检查项 | 实测结果 |
+|---|---|
+| `ProgressTests` | **PASS**：8 用例 / 45 断言 / 0 失败（新增第 9 个测试套件） |
+| T11 纯函数 | 跳转次数为 0 时 `ComputeCompensatedDecodeFrame(frame, ...) == frame`，从 0 到 LoopStart 全程成立；跳转次数为负也不补偿 |
+| T11 集成 | 真实解码线程在 Intro 阶段 `PlaybackFrame() == EstimatePlaybackFrame()`，即未叠加任何补偿 |
+| T10 补偿量 | 跳转 1 次后解码位置回到 LoopStart 时进度为 LoopEnd；跳转 2 次为 `LoopEnd + 1×L`；跳转 3 次在任意位置为 `pos + 3×L` |
+| T10 边界连续性 | 跳转前 `LoopEnd-1` → 跳转后 `LoopEnd`，单调不减且前跳为 1 帧，远小于一个循环长度 |
+| T10 集成 | 真实循环跨越 3 次以上，5ms 采样 45+ 次：无回退、单步前跳均未超过一个循环长度 |
+| 退化区间 | `loopEnd <= loopStart` 时不做补偿，返回原解码位置 |
+| 缓冲扣减夹零 | `bufferedFrames >= decodedFrame` 时返回 0，不出现负进度 |
+| 改点后清零 | 改点使计数归零，`PlaybackFrame() == EstimatePlaybackFrame()`，补偿随之清零（允许此处回退） |
+| HAP 构建（回归） | BUILD SUCCESSFUL；`progress.h` 已编入 `libentry.so` |
+
 ### 测试过程中发现并修正的缺陷
 
 | 编号 | 缺陷 | 处理 |
@@ -226,7 +241,7 @@
 - [x] 需修复后复验（Build 阶段进行中，非归档态）
 - [ ] 需人类决策
 
-**说明**：Plan 阶段产物（proposal / design / tasks / delta spec）已完成并通过严格校验；合成 fixture 已生成并通过相位连续性数值检查；HAP 构建、真机安装、启动与 G0 正弦波听测均已实测通过。当前已完成任务 1.1、2.2~2.5、3.1~3.5、4.1~4.5（循环核心全部完成），下一步为任务 5.1。任务 6.2 / 6.3 的循环听测需等进度与控制接口及最小界面（5.1~6.1）完成后再执行。
+**说明**：Plan 阶段产物（proposal / design / tasks / delta spec）已完成并通过严格校验；合成 fixture 已生成并通过相位连续性数值检查；HAP 构建、真机安装、启动与 G0 正弦波听测均已实测通过。当前已完成任务 1.1、2.2~2.5、3.1~3.5、4.1~4.5 与 5.1，下一步为任务 5.2。任务 6.2 / 6.3 的循环听测需等控制接口与最小界面（5.2~6.1）完成后再执行。
 
 已确认的决策：HarmonyOS SDK **26.0.0**、真实素材由用户提供、包名 `com.cpu.seamlessloopharmony`。
 

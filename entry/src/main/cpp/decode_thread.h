@@ -81,6 +81,17 @@ public:
     // 累计循环次数（T08）。
     int64_t LoopCount() const;
 
+    // 已补偿的播放位置（帧），单调不减，除非发生 seek 或循环点变更（T10）。
+    // Intro 阶段（尚未发生跳转）返回真实位置，不叠加补偿（T11）。
+    int64_t PlaybackFrame() const;
+
+    // 未补偿的播放位置：解码位置减去 FIFO 中尚未被消费的帧数。
+    // 供诊断与对比使用；对外进度应使用 PlaybackFrame()。
+    int64_t EstimatePlaybackFrame() const;
+
+    // FIFO 中尚未被消费的帧数。
+    int64_t BufferedFrames() const;
+
     // 重置循环计数。seek 与循环点变更后必须调用（T08）；
     // 任务 5.2 的 seekToSample 需要显式调用本方法。
     void ResetLoopCount();
@@ -94,10 +105,6 @@ private:
 
     // 当前是否应执行循环跳转（区间有效且开关打开）。
     bool LoopActive(int64_t* startFrame, int64_t* endFrame) const;
-
-    // 估算当前播放位置：解码位置减去 FIFO 中尚未被消费的帧数。
-    // 与任务 5.1 的进度计算同源，但此处只需判断是否落在区间内。
-    int64_t EstimatePlaybackFrame() const;
 
     // 请求解码线程跳转到指定帧。实际 seek 在解码线程内完成，
     // 避免在调用线程与解码线程之间并发操作同一个解码器。

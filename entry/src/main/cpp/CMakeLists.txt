@@ -109,6 +109,16 @@ if(BUILD_TESTS AND NOT CMAKE_SYSTEM_NAME STREQUAL "OHOS")
         FIXTURE_DIR="${NATIVERENDER_ROOT_PATH}/../../../../fixtures/synthetic")
     add_test(NAME LoopStreamTests COMMAND loop_stream_tests)
 
+    add_executable(progress_tests
+        tests/progress_test.cpp
+        ${SLH_CORE_SOURCES})
+    target_include_directories(progress_tests PRIVATE
+        ${NATIVERENDER_ROOT_PATH}
+        ${NATIVERENDER_ROOT_PATH}/tests)
+    target_compile_definitions(progress_tests PRIVATE
+        FIXTURE_DIR="${NATIVERENDER_ROOT_PATH}/../../../../fixtures/synthetic")
+    add_test(NAME ProgressTests COMMAND progress_tests)
+
     return()
 endif()
 

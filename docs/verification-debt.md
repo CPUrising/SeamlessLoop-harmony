@@ -14,7 +14,7 @@
 | `LoopConfig` | T02~T04 循环点校验与归一化 | `LoopConfigTests` | 通过 | 2026-11-05 实测：9 用例 / 74 断言 / 0 失败（T02 的「播放不中断」待运行时链路 4.4 / 5.3） |
 | `LoopConfig` | T05 / T06 运行时修改循环点 | `LoopRangeChangeTests` | 通过 | 2026-11-05 实测：5 用例 / 43 断言 / 0 失败；T05 的 200ms 听感条款待 6.3 |
 | `LoopCounter` | T08 / T09 循环计数与事件 | `LoopCounterTests` | 通过 | 2026-11-05 实测：7 用例 / 46 断言 / 0 失败；计数单调递增、改点后归零、关闭循环不上报 |
-| `Progress` | T10 / T11 进度连续性与回绕补偿 | `ProgressTests` | 未执行 | 代码未实现 |
+| `Progress` | T10 / T11 进度连续性与回绕补偿 | `ProgressTests` | 通过 | 2026-11-05 实测：8 用例 / 45 断言 / 0 失败；真实循环 3 次以上进度单调不减 |
 | `Decoder` | T12 加载与格式上报 | `DecoderTests` | 通过 | 2026-11-05 实测：10 用例 / 50 断言 / 0 失败，含 WAV 单双声道与 MP3 |
 | `Decoder` | MP3 解码后实际采样位置与 encoder delay 处理 | `DecoderTests` | 通过 | `drmp3_get_pcm_frame_count` 已扣除 delay/padding，实测总帧数落在 (118000, 124000)；`manifest.json` 仍待回填精确值 |
 | `Transport` | T13 暂停恢复 | `TransportTests` | 未执行 | 代码未实现（任务 5.2） |
@@ -48,3 +48,4 @@
 | 2026-11-05 | T08 / T09 循环计数与事件上报（任务 4.3） | 通过 | `artifacts/verify-0001-harmony-loop-kernel-20261105-135348.log`；`LoopCounterTests` 7 用例 / 46 断言全通过 |
 | 2026-11-05 | T05 / T06 运行时修改循环点（任务 4.4） | 通过 | `artifacts/verify-0001-harmony-loop-kernel-20261105-182218.log`；`LoopRangeChangeTests` 5 用例 / 43 断言全通过；T05 的听感条款仍待 6.3 |
 | 2026-11-05 | T07 关闭循环后的整曲播放与结束上报（任务 4.5） | 通过 | `artifacts/verify-0001-harmony-loop-kernel-20261105-183703.log`；`LoopStreamTests` 5 用例 / 36 断言全通过 |
+| 2026-11-05 | T10 / T11 进度连续性与回绕补偿（任务 5.1） | 通过 | `artifacts/verify-0001-harmony-loop-kernel-20261105-184809.log`；`ProgressTests` 8 用例 / 45 断言全通过 |
