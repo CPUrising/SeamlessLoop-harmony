@@ -20,6 +20,7 @@ set(SLH_CORE_SOURCES
     decode_thread.cpp
     loop_config.cpp
     playback_engine.cpp
+    ab_pair.cpp
     third_party/dr_libs_impl.c
     third_party/stb_vorbis_impl.c)
 
@@ -86,6 +87,16 @@ if(BUILD_TESTS AND NOT CMAKE_SYSTEM_NAME STREQUAL "OHOS")
         ${NATIVERENDER_ROOT_PATH}
         ${NATIVERENDER_ROOT_PATH}/tests)
     add_test(NAME LoopConfigTests COMMAND loop_config_tests)
+
+    add_executable(ab_pair_tests
+        tests/ab_pair_test.cpp
+        ab_pair.cpp)
+    target_include_directories(ab_pair_tests PRIVATE
+        ${NATIVERENDER_ROOT_PATH}
+        ${NATIVERENDER_ROOT_PATH}/tests)
+    target_compile_definitions(ab_pair_tests PRIVATE
+        FIXTURE_DIR="${NATIVERENDER_ROOT_PATH}/../../../../fixtures/synthetic")
+    add_test(NAME AbPairTests COMMAND ab_pair_tests)
 
     add_executable(loop_counter_tests
         tests/loop_counter_test.cpp
