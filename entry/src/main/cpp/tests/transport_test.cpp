@@ -210,8 +210,13 @@ TEST_CASE(testSeekResetsLoopCount)
 
     CHECK_TRUE(engine.SeekToSample(1000));
     CHECK_EQ(engine.LoopCount(), static_cast<int64_t>(0));
-    // 补偿清零后，进度等于未补偿估算值。
-    CHECK_EQ(engine.PlaybackFrame(), engine.Decoder()->EstimatePlaybackFrame());
+    // 补偿清零后，进度必须回到 seek 目标附近，而不是停留在循环补偿后的位置。
+    // 注意：PlaybackFrame() 与 EstimatePlaybackFrame() 是两次独立快照，
+    // 中间解码线程会继续预填 FIFO，因此不能断言两者严格相等。
+    // 若补偿未清零，进度会叠加至少一个循环体长度（88200 帧）。
+    const int64_t playback = engine.PlaybackFrame();
+    CHECK_TRUE(playback >= 1000);
+    CHECK_TRUE(playback <= 1000 + 88200);
 
     engine.Stop();
 }

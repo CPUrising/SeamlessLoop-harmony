@@ -13,3 +13,8 @@
 /artifacts
 # DevEco / hdc 运行时产生的崩溃转储，不入库
 Crash_*.dmp
+# 真实音乐素材（AGENTS.md 硬约束 6：禁止提交真实音乐文件）
+# 本地复制到 rawfile 仅供真机听测，不入库
+/entry/src/main/resources/rawfile/bgm03_2_a.ogg
+/entry/src/main/resources/rawfile/bgm03_2_b.ogg
+/entry/src/main/resources/rawfile/水月陵 - flower.mp3

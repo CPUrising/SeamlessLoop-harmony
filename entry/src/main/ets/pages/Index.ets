@@ -1,9 +1,10 @@
 /*
  * 最小验证界面（任务 6.1）：
- * - 把合成 fixture 从 rawfile 复制到应用沙箱固定路径，再交给 native 加载。
+ * - 把 fixture 从 rawfile 复制到应用沙箱固定路径，再交给 native 加载。
  *   设计上文件走「沙箱内固定路径」（design.md Open Questions 第 3 条），
  *   打进 rawfile 只是为了让真机无需 push 也能复现听测。
- * - 支持两种曲目：单文件 WAV，以及 A/B 双文件（按 A 侧路径加载，native 自动配对）。
+ * - 支持四种曲目：合成单文件、合成 A/B、真实 A/B（bgm03_2）、真实单文件（flower.mp3）。
+ *   A/B 曲目按 A 侧路径加载，native 自动配对。
  * - 播放 / 暂停 / 停止，显示播放进度与累计循环次数。
  * 页面只做展示与转发，解码、配对、循环与进度计算全在 native 侧。
  */
@@ -28,15 +29,49 @@ import { hilog } from '@kit.PerformanceAnalysisKit';
 const DOMAIN = 0x0001;
 const TAG = 'SLH_Index';
 
-// 单文件曲目：循环体固定 2 秒（见 fixtures/manifest.json）。
-const SINGLE_FIXTURE: string = 'intro_loop_44100_mono.wav';
-const SINGLE_LOOP_SECONDS: number = 2;
+// 曲目定义。loopStartFrames 为 null 时按「总长 − loopTailSeconds」推导。
+interface TrackSpec {
+  label: string;
+  aFile: string;
+  bFile: string; // 空串表示单文件
+  loopStartFrames: number; // -1 表示按 loopTailSeconds 推导
+  loopTailSeconds: number;
+}
 
-// A/B 曲目：A 段 33075 帧（0.75 秒），B 段 88200 帧（2 秒）。
-// 循环点按虚拟时间轴表示：LoopStart = A 的帧数，LoopEnd = 虚拟轴总长。
-const PAIR_FIXTURE_A: string = 'ab_pair_44100_stereo_a.wav';
-const PAIR_FIXTURE_B: string = 'ab_pair_44100_stereo_b.wav';
-const PAIR_A_SECONDS: number = 0.75;
+// 合成单文件：循环体固定 2 秒（见 fixtures/manifest.json）。
+// 合成 A/B：A 段 33075 帧（0.75 秒），循环点 = A 帧数。
+// 真实 A/B：bgm03_2，A 段 460798 帧，循环点 = A 帧数（见 fixtures/real/README.md）。
+// 真实单文件：水月陵 - flower.mp3，LoopStart 146308（DB 记录值）。
+const TRACKS: TrackSpec[] = [
+  {
+    label: '合成单文件',
+    aFile: 'intro_loop_44100_mono.wav',
+    bFile: '',
+    loopStartFrames: -1,
+    loopTailSeconds: 2
+  },
+  {
+    label: '合成 A/B',
+    aFile: 'ab_pair_44100_stereo_a.wav',
+    bFile: 'ab_pair_44100_stereo_b.wav',
+    loopStartFrames: 33075,
+    loopTailSeconds: 0
+  },
+  {
+    label: '真实 A/B (bgm03_2)',
+    aFile: 'bgm03_2_a.ogg',
+    bFile: 'bgm03_2_b.ogg',
+    loopStartFrames: 460798,
+    loopTailSeconds: 0
+  },
+  {
+    label: '真实单文件 (flower)',
+    aFile: '水月陵 - flower.mp3',
+    bFile: '',
+    loopStartFrames: 146308,
+    loopTailSeconds: 0
+  }
+];
 
 const STATE_IDLE: number = 0;
 const STATE_PLAYING: number = 2;
@@ -54,7 +89,7 @@ struct Index {
   @State totalFrames: number = 0;
   @State playing: boolean = false;
   @State isPair: boolean = false;
-  @State usePair: boolean = false;
+  @State trackIndex: number = 0;
 
   private timerId: number = -1;
 
@@ -99,15 +134,14 @@ struct Index {
   }
 
   private prepareAndLoad(): void {
+    const track: TrackSpec = TRACKS[this.trackIndex];
     let path: string = '';
     try {
-      if (this.usePair) {
-        // A/B 模式：两个文件都要落到沙箱，native 按 A 侧路径自动配对。
-        this.copyFixture(PAIR_FIXTURE_B);
-        path = this.copyFixture(PAIR_FIXTURE_A);
-      } else {
-        path = this.copyFixture(SINGLE_FIXTURE);
+      // A/B 曲目：两个文件都要落到沙箱，native 按 A 侧路径自动配对。
+      if (track.bFile.length > 0) {
+        this.copyFixture(track.bFile);
       }
+      path = this.copyFixture(track.aFile);
     } catch (err) {
       this.status = `复制 fixture 失败：${err}`;
       hilog.error(DOMAIN, TAG, 'copy fixture failed: %{public}s', `${err}`);
@@ -126,11 +160,12 @@ struct Index {
     this.totalFrames = format.totalFrames;
     this.isPair = format.isPair;
 
-    // 循环点按虚拟时间轴计算：A/B 模式从 B 的第 0 帧开始循环，
-    // 单文件模式保留最后 2 秒作为循环体。
-    const loopStart: number = this.isPair
-      ? Math.round(PAIR_A_SECONDS * format.sampleRate)
-      : format.totalFrames - SINGLE_LOOP_SECONDS * format.sampleRate;
+    // 循环点按虚拟时间轴计算：A/B 模式从 B 的第 0 帧开始循环；
+    // 单文件模式用曲目表里的固定值，或按「总长 − 尾部秒数」推导。
+    let loopStart: number = track.loopStartFrames;
+    if (loopStart < 0) {
+      loopStart = format.totalFrames - track.loopTailSeconds * format.sampleRate;
+    }
     this.loopStart = loopStart;
     if (!setLoopPoints(loopStart, format.totalFrames)) {
       this.status = `循环点设置失败：${loopStart} → ${format.totalFrames}`;
@@ -144,7 +179,7 @@ struct Index {
     this.loopCount = 0;
     this.playing = false;
     const kind: string = this.isPair ? 'A/B 双文件' : '单文件';
-    this.status = `${kind} / ${format.sampleRate}Hz / ${format.channels}ch / ${format.totalFrames} 采样`;
+    this.status = `${track.label} / ${kind} / ${format.sampleRate}Hz / ${format.channels}ch / ${format.totalFrames} 采样`;
     hilog.info(DOMAIN, TAG, 'loaded %{public}s, pair=%{public}d, loop %{public}d -> %{public}d',
       this.fixturePath, this.isPair ? 1 : 0, loopStart, format.totalFrames);
   }
@@ -183,10 +218,10 @@ struct Index {
     this.loopCount = 0;
   }
 
-  // 在单文件与 A/B 双文件之间切换曲目，切换后重新加载。
+  // 切换到下一首曲目并重新加载。
   private switchTrack(): void {
     stop();
-    this.usePair = !this.usePair;
+    this.trackIndex = (this.trackIndex + 1) % TRACKS.length;
     this.underrunBytes = 0;
     this.prepareAndLoad();
   }
@@ -197,9 +232,11 @@ struct Index {
     if (this.sampleRate <= 0 || this.totalFrames <= 0) {
       return;
     }
-    const base: number = this.isPair
-      ? Math.round(PAIR_A_SECONDS * this.sampleRate)
-      : this.totalFrames - SINGLE_LOOP_SECONDS * this.sampleRate;
+    const track: TrackSpec = TRACKS[this.trackIndex];
+    let base: number = track.loopStartFrames;
+    if (base < 0) {
+      base = this.totalFrames - track.loopTailSeconds * this.sampleRate;
+    }
     const shifted: number = base + this.sampleRate;
     const next: number = this.loopStart === base ? shifted : base;
     if (!setLoopPoints(next, this.totalFrames)) {
@@ -245,7 +282,7 @@ struct Index {
           })
       }
 
-      Button(this.usePair ? '切到单文件' : '切到 A/B 双文件')
+      Button(`切换曲目（当前：${TRACKS[this.trackIndex].label}）`)
         .width(256)
         .onClick(() => {
           this.switchTrack();
