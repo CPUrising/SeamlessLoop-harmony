@@ -20,7 +20,8 @@ set(SLH_CORE_SOURCES
     decode_thread.cpp
     loop_config.cpp
     playback_engine.cpp
-    third_party/dr_libs_impl.c)
+    third_party/dr_libs_impl.c
+    third_party/stb_vorbis_impl.c)
 
 # ---------------------------------------------------------------------------
 # 两条构建路径：

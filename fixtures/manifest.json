@@ -38,6 +38,16 @@
       "note": "MP3 存在编码器延迟/填充，解码后的采样位置与源 WAV 不同。循环点须在解码后实测，不可直接沿用源 WAV 的数值。"
     },
     {
+      "file": "intro_loop_44100_mono.ogg",
+      "format": "ogg",
+      "sample_rate": 44100,
+      "channels": 1,
+      "decoded_duration": 2.75,
+      "derived_from": "intro_loop_44100_mono.wav",
+      "phase_continuous": true,
+      "note": "OGG Vorbis 由源 WAV 转码。容器 granule position 与解码器输出可能有 0~2 帧差异，循环点须在解码后实测。"
+    },
+    {
       "format": "wav",
       "sample_rate": 44100,
       "channels": 2,

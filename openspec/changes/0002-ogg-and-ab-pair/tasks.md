@@ -10,9 +10,9 @@
 
 ## 2. OGG 解码
 
-- [ ] 2.1 引入 `stb_vorbis.c` 与 `stb_vorbis_impl.c` 到 `entry/src/main/cpp/third_party/`，接入 `CMakeLists.txt` 两条构建路径
-- [ ] 2.2 `AudioDecoder` 支持 `.ogg`：`Open` 分派、`Format` 上报、`SeekToFrame`、`ReadFrames`（覆盖 T12 的 OGG 分支）
-- [ ] 2.3 补 `DecoderTests` 的 OGG 用例：格式上报、总帧数、seek 落点、读到末尾
+- [x] 2.1 引入 `stb_vorbis.c` 与 `stb_vorbis_impl.c` 到 `entry/src/main/cpp/third_party/`，接入 `CMakeLists.txt` 两条构建路径
+- [x] 2.2 `AudioDecoder` 支持 `.ogg`：`Open` 分派、`Format` 上报、`SeekToFrame`、`ReadFrames`（覆盖 T12 的 OGG 分支）
+- [x] 2.3 补 `DecoderTests` 的 OGG 用例：格式上报、总帧数、seek 落点、读到末尾（新增 3 用例，DecoderTests 50 → 75 断言）
 
 ## 3. A/B 配对识别
 

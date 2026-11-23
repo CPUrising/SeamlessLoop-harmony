@@ -11,6 +11,11 @@
 
 #include "third_party/dr_mp3.h"
 #include "third_party/dr_wav.h"
+// stb_vorbis 没有 IMPLEMENTATION 宏，而是用 HEADER_ONLY 反向控制：
+// 定义它只取声明，实现由 third_party/stb_vorbis_impl.c 单独编译，
+// 否则两个 TU 会重复定义符号。
+#define STB_VORBIS_HEADER_ONLY
+#include "third_party/stb_vorbis.c"
 
 namespace slh {
 namespace {
@@ -43,11 +48,13 @@ bool HasExtension(const char* path, const char* ext)
 struct AudioDecoder::Impl {
     AudioFormatInfo info;
 
-    // 两种解码器互斥使用，同一时刻只有一个是打开的。
+    // 三种解码器互斥使用，同一时刻只有一个是打开的。
     drwav wav{};
     drmp3 mp3{};
+    stb_vorbis* ogg = nullptr;
     bool wavOpen = false;
     bool mp3Open = false;
+    bool oggOpen = false;
 
     // 逻辑解码位置（帧）。不用 dr_libs 的内部游标，避免两套语义混淆。
     int64_t currentFrame = 0;
@@ -61,6 +68,11 @@ struct AudioDecoder::Impl {
         if (mp3Open) {
             drmp3_uninit(&mp3);
             mp3Open = false;
+        }
+        if (oggOpen) {
+            stb_vorbis_close(ogg);
+            ogg = nullptr;
+            oggOpen = false;
         }
         info = AudioFormatInfo{};
         currentFrame = 0;
@@ -109,6 +121,25 @@ bool AudioDecoder::Open(const char* path)
         return true;
     }
 
+    if (HasExtension(path, ".ogg")) {
+        int error = 0;
+        impl_->ogg = stb_vorbis_open_filename(path, &error, nullptr);
+        if (impl_->ogg == nullptr) {
+            return false;
+        }
+        impl_->oggOpen = true;
+        const stb_vorbis_info oggInfo = stb_vorbis_get_info(impl_->ogg);
+        impl_->info.format = AudioFormat::kOgg;
+        impl_->info.sampleRate = static_cast<int32_t>(oggInfo.sample_rate);
+        impl_->info.channels = static_cast<int32_t>(oggInfo.channels);
+        // stb_vorbis_stream_length_in_samples 返回容器 granule position 换算的
+        // 总采样数，与顺序解码可读出的帧数一致（实测差 0~2 帧，见 design.md 决策 5）。
+        impl_->info.totalFrames =
+            static_cast<int64_t>(stb_vorbis_stream_length_in_samples(impl_->ogg));
+        impl_->currentFrame = 0;
+        return true;
+    }
+
     // 扩展名不支持：明确失败，不猜测格式。
     return false;
 }
@@ -120,7 +151,7 @@ void AudioDecoder::Close()
 
 bool AudioDecoder::IsOpen() const
 {
-    return impl_->wavOpen || impl_->mp3Open;
+    return impl_->wavOpen || impl_->mp3Open || impl_->oggOpen;
 }
 
 const AudioFormatInfo& AudioDecoder::Format() const
@@ -152,6 +183,12 @@ int64_t AudioDecoder::SeekToFrame(int64_t frame)
         if (!drmp3_seek_to_pcm_frame(&impl_->mp3, static_cast<drmp3_uint64>(target))) {
             return -1;
         }
+    } else if (impl_->oggOpen) {
+        // stb_vorbis_seek 是「下一次 get_samples 从该采样开始」的语义，
+        // 与 dr_libs 的 seek_to_pcm_frame 一致，因此可以直接用。
+        if (!stb_vorbis_seek(impl_->ogg, static_cast<unsigned int>(target))) {
+            return -1;
+        }
     } else {
         return -1;
     }
@@ -173,6 +210,12 @@ int64_t AudioDecoder::ReadFrames(int16_t* out, int64_t frames)
     } else if (impl_->mp3Open) {
         read = static_cast<int64_t>(
             drmp3_read_pcm_frames_s16(&impl_->mp3, static_cast<drmp3_uint64>(frames), out));
+    } else if (impl_->oggOpen) {
+        // get_samples_short_interleaved 的 num_shorts 是「short 个数」，
+        // 不是帧数，因此要乘声道数。
+        const int channels = impl_->info.channels;
+        read = static_cast<int64_t>(stb_vorbis_get_samples_short_interleaved(
+            impl_->ogg, channels, out, static_cast<int>(frames * channels)));
     }
 
     if (read > 0) {

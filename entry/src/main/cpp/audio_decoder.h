@@ -28,6 +28,7 @@ enum class AudioFormat {
     kUnknown = 0,
     kWav,
     kMp3,
+    kOgg,
 };
 
 struct AudioFormatInfo {
@@ -51,7 +52,7 @@ public:
     AudioDecoder(const AudioDecoder&) = delete;
     AudioDecoder& operator=(const AudioDecoder&) = delete;
 
-    // 打开文件并读取格式信息。仅支持 .wav / .mp3（按扩展名分派）。
+    // 打开文件并读取格式信息。支持 .wav / .mp3 / .ogg（按扩展名分派）。
     // 失败返回 false，不抛出异常。
     bool Open(const char* path);
 

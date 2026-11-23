@@ -242,6 +242,35 @@ def make_ab_pair(name, sample_rate, channels, a_sec, b_sec):
     return a_entry, b_entry
 
 
+def make_ogg(name, wav_path: Path, sample_rate):
+    """把 WAV 转成 OGG Vorbis，用于验证 OGG 解码路径。"""
+    ogg_path = OUT / f"{name}.ogg"
+    subprocess.run(
+        [
+            "ffmpeg", "-y", "-v", "error",
+            "-i", str(wav_path),
+            "-codec:a", "libvorbis", "-q:a", "6",
+            str(ogg_path),
+        ],
+        check=True,
+    )
+    probed = probe_duration(ogg_path)
+    print(f"[ogg] {ogg_path.name}  probe={probed}")
+    return {
+        "file": ogg_path.name,
+        "format": "ogg",
+        "sample_rate": probed.get("sample_rate", sample_rate),
+        "channels": probed.get("channels", 1),
+        "decoded_duration": probed.get("duration"),
+        "derived_from": wav_path.name,
+        "phase_continuous": True,
+        "note": (
+            "OGG Vorbis 由源 WAV 转码。容器 granule position 与解码器输出"
+            "可能有 0~2 帧差异，循环点须在解码后实测。"
+        ),
+    }
+
+
 def make_mp3(name, wav_path: Path, sample_rate):
     mp3_path = OUT / f"{name}.mp3"
     subprocess.run(
@@ -282,6 +311,7 @@ def main():
     entries.append(e2)
 
     entries.append(make_mp3("intro_loop_44100_mono", wav1, 44100))
+    entries.append(make_ogg("intro_loop_44100_mono", wav1, 44100))
 
     # A/B 对：A 0.75s（前奏）+ B 2.0s（循环体），虚拟轴总长 2.75s
     a_entry, b_entry = make_ab_pair("ab_pair_44100_stereo", 44100, 2, 0.75, 2.0)

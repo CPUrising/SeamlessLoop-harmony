@@ -143,7 +143,74 @@ TEST_CASE(testReadStopsAtEnd)
     CHECK_EQ(dec.CurrentFrame(), total);
 }
 
-// 不支持的扩展名必须明确失败，不猜测格式。
+// F01：OGG 加载后必须报出采样率、声道数、总采样数（0002 新增）。
+TEST_CASE(testLoadReportsFormatOgg)
+{
+    slh::AudioDecoder dec;
+    const std::string path = FixturePath("intro_loop_44100_mono.ogg");
+    CHECK_TRUE(dec.Open(path.c_str()));
+    CHECK_TRUE(dec.IsOpen());
+
+    const slh::AudioFormatInfo& info = dec.Format();
+    CHECK_TRUE(info.format == slh::AudioFormat::kOgg);
+    CHECK_EQ(info.sampleRate, 44100);
+    CHECK_EQ(info.channels, 1);
+    // 合成 OGG 由同源 WAV 转码，总帧数应与 WAV 一致（实测 121275）。
+    CHECK_EQ(info.totalFrames, static_cast<int64_t>(121275));
+    CHECK_EQ(info.bytesPerFrame(), 2);
+    CHECK_EQ(dec.CurrentFrame(), static_cast<int64_t>(0));
+}
+
+// F01 后半句：总采样数必须与顺序解码可读出的帧数一致。
+TEST_CASE(testOggDecodedFramesMatchTotal)
+{
+    slh::AudioDecoder dec;
+    CHECK_TRUE(dec.Open(FixturePath("intro_loop_44100_mono.ogg").c_str()));
+    const int64_t total = dec.Format().totalFrames;
+
+    std::vector<int16_t> buf(4096);
+    int64_t decoded = 0;
+    while (true) {
+        const int64_t n = dec.ReadFrames(buf.data(), 4096);
+        if (n <= 0) {
+            break;
+        }
+        decoded += n;
+    }
+    CHECK_EQ(decoded, total);
+}
+
+// F02：OGG 按采样点跳转后，读出的数据必须与从头顺序解码到该位置一致。
+TEST_CASE(testOggSeekMatchesSequentialDecode)
+{
+    const int64_t target = 33075; // manifest 里的 LoopStart
+    const int64_t probeFrames = 512;
+
+    // 路径一：从头顺序解码到 target，再读 probeFrames 帧
+    slh::AudioDecoder seq;
+    CHECK_TRUE(seq.Open(FixturePath("intro_loop_44100_mono.ogg").c_str()));
+    std::vector<int16_t> scratch(4096);
+    int64_t consumed = 0;
+    while (consumed < target) {
+        const int64_t want = (target - consumed) < 4096 ? (target - consumed) : 4096;
+        const int64_t n = seq.ReadFrames(scratch.data(), want);
+        CHECK_TRUE(n > 0);
+        consumed += n;
+    }
+    std::vector<int16_t> expected(probeFrames);
+    CHECK_EQ(seq.ReadFrames(expected.data(), probeFrames), probeFrames);
+
+    // 路径二：直接 seek 到 target，再读 probeFrames 帧
+    slh::AudioDecoder seeked;
+    CHECK_TRUE(seeked.Open(FixturePath("intro_loop_44100_mono.ogg").c_str()));
+    CHECK_EQ(seeked.SeekToFrame(target), target);
+    std::vector<int16_t> actual(probeFrames);
+    CHECK_EQ(seeked.ReadFrames(actual.data(), probeFrames), probeFrames);
+
+    CHECK_TRUE(expected == actual);
+}
+
+// F03：不支持的扩展名必须明确失败，不猜测格式。
 TEST_CASE(testOpenRejectsUnsupportedExtension)
 {
     slh::AudioDecoder dec;
@@ -186,6 +253,9 @@ int main()
     testLoadReportsFormatWav_runner();
     testLoadReportsFormatWavStereo_runner();
     testLoadReportsFormatMp3_runner();
+    testLoadReportsFormatOgg_runner();
+    testOggDecodedFramesMatchTotal_runner();
+    testOggSeekMatchesSequentialDecode_runner();
     testSeekToFrameWithinRange_runner();
     testSeekClampsOutOfRange_runner();
     testReadAfterSeekReturnsLaterData_runner();
