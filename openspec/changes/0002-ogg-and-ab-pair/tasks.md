@@ -5,8 +5,8 @@
 
 ## 1. 规范与素材准备
 
-- [ ] 1.1 冻结真实素材清单：`fixtures/real/README.md` 填写 `bgm03_2_a/b.ogg` 与 `水月陵 - flower.mp3` 的格式、总采样数、循环点
-- [ ] 1.2 生成合成 A/B fixture：`scripts/make-fixtures.py` 增加一对内容不同、边界相位连续的 `ab_pair_44100_stereo_{a,b}.wav`，并写入 `manifest.json`
+- [x] 1.1 冻结真实素材清单：`fixtures/real/README.md` 填写 `bgm03_2_a/b.ogg` 与 `水月陵 - flower.mp3` 的格式、总采样数、循环点
+- [x] 1.2 生成合成 A/B fixture：`scripts/make-fixtures.py` 增加一对内容不同、边界相位连续的 `ab_pair_44100_stereo_{a,b}.wav`，并写入 `manifest.json`（A→B 突变比值 0.157、循环点比值 0.50，均 ≤ 1.5）
 
 ## 2. OGG 解码
 

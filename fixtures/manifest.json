@@ -36,6 +36,28 @@
       "derived_from": "intro_loop_44100_mono.wav",
       "phase_continuous": true,
       "note": "MP3 存在编码器延迟/填充，解码后的采样位置与源 WAV 不同。循环点须在解码后实测，不可直接沿用源 WAV 的数值。"
+    },
+    {
+      "format": "wav",
+      "sample_rate": 44100,
+      "channels": 2,
+      "ab_pair": "ab_pair_44100_stereo",
+      "phase_continuous": true,
+      "file": "ab_pair_44100_stereo_a.wav",
+      "role": "a",
+      "total_samples": 33075,
+      "note": "A 段（前奏）：100Hz（周期 441 采样），末帧相位接近 0，与 B 首帧连续"
+    },
+    {
+      "format": "wav",
+      "sample_rate": 44100,
+      "channels": 2,
+      "ab_pair": "ab_pair_44100_stereo",
+      "phase_continuous": true,
+      "file": "ab_pair_44100_stereo_b.wav",
+      "role": "b",
+      "total_samples": 88200,
+      "note": "B 段（循环体）：441Hz + 二次谐波，首末帧相位一致"
     }
   ]
 }

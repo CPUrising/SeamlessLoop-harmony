@@ -148,6 +148,100 @@ def make_one(name, sample_rate, channels, intro_sec, loop_sec):
     return entry, wav_path
 
 
+def build_ab_pair(sample_rate: int, channels: int, a_samples: int, b_samples: int):
+    """构造一对内容不同、边界相位连续的 A/B 素材。
+
+    A（前奏）：100Hz 基频 + 淡入，长度 a_samples。
+    B（循环体）：441Hz 基频 + 二次谐波 + 周期包络，长度 b_samples。
+
+    相位连续性的保证：
+    - A 的周期取 441 采样（44.1kHz 下 100Hz），且 a_samples 必须是 441 的整数倍，
+      这样 A 的末帧相位只差一个采样步长，值接近 0。
+    - B 的首帧 sin(0) = 0，因此 A→B 边界突变接近 0。
+    - B 的长度是 441Hz（周期 100）的整数倍，且包络周期整除 b_samples，
+      因此 B 末帧与首帧的相位差同样只有一个采样步长。
+    """
+    # A 段：周期 441 采样，保证 a_samples 是整数个周期
+    a_period = 441
+    assert a_samples % a_period == 0, (
+        f"a_samples={a_samples} 必须是 {a_period} 的整数倍，否则 A 末帧相位不为 0"
+    )
+    a_freq = sample_rate / float(a_period)
+    na = np.arange(a_samples, dtype=np.float64)
+    a = np.sin(2.0 * np.pi * a_freq * na / sample_rate)
+    # 淡入 100ms，避免文件起始爆音（不是循环边界）
+    fade = min(int(0.1 * sample_rate), a_samples)
+    if fade > 0:
+        a[:fade] *= np.linspace(0.0, 1.0, fade)
+    a *= 0.5
+
+    # B 段：period = sample_rate / 441 = 100（44100 时）
+    b_freq = sample_rate / 100.0
+    nb = np.arange(b_samples, dtype=np.float64)
+    phase = 2.0 * np.pi * b_freq * nb / sample_rate
+    body = np.sin(phase) + 0.35 * np.sin(2.0 * phase)
+
+    envelope_cycles = 2
+    assert b_samples % envelope_cycles == 0
+    env = 0.75 + 0.25 * np.sin(
+        2.0 * np.pi * envelope_cycles * nb / b_samples - np.pi / 2.0
+    )
+    b = 0.5 * body * env
+
+    # 两段各自归一化到 -0.9 ~ 0.9，避免削顶；归一化不改变首末帧为 0 的性质
+    for seg in (a, b):
+        peak = np.max(np.abs(seg))
+        if peak > 0:
+            seg *= 0.9 / peak
+
+    def to_channels(sig):
+        if channels == 1:
+            return sig
+        return np.repeat(sig[:, None], channels, axis=1)
+
+    return to_channels(a), to_channels(b)
+
+
+def make_ab_pair(name, sample_rate, channels, a_sec, b_sec):
+    """生成一对 A/B WAV，并返回两条 manifest 条目。"""
+    a_samples = int(round(a_sec * sample_rate))
+    b_samples = int(round(b_sec * sample_rate))
+
+    a_data, b_data = build_ab_pair(sample_rate, channels, a_samples, b_samples)
+
+    a_path = OUT / f"{name}_a.wav"
+    b_path = OUT / f"{name}_b.wav"
+    write_wav(a_path, a_data, sample_rate)
+    write_wav(b_path, b_data, sample_rate)
+
+    total = a_samples + b_samples
+    common = {
+        "format": "wav",
+        "sample_rate": sample_rate,
+        "channels": channels,
+        "ab_pair": name,
+        "phase_continuous": True,
+    }
+    a_entry = dict(common)
+    a_entry.update({
+        "file": a_path.name,
+        "role": "a",
+        "total_samples": a_samples,
+        "note": "A 段（前奏）：100Hz（周期 441 采样），末帧相位接近 0，与 B 首帧连续",
+    })
+    b_entry = dict(common)
+    b_entry.update({
+        "file": b_path.name,
+        "role": "b",
+        "total_samples": b_samples,
+        "note": "B 段（循环体）：441Hz + 二次谐波，首末帧相位一致",
+    })
+
+    print(f"[ab] {a_path.name} ({a_samples}) + {b_path.name} ({b_samples}) "
+          f"-> virtual total={total} loop=[{a_samples},{total})")
+    return a_entry, b_entry
+
+
 def make_mp3(name, wav_path: Path, sample_rate):
     mp3_path = OUT / f"{name}.mp3"
     subprocess.run(
@@ -188,6 +282,11 @@ def main():
     entries.append(e2)
 
     entries.append(make_mp3("intro_loop_44100_mono", wav1, 44100))
+
+    # A/B 对：A 0.75s（前奏）+ B 2.0s（循环体），虚拟轴总长 2.75s
+    a_entry, b_entry = make_ab_pair("ab_pair_44100_stereo", 44100, 2, 0.75, 2.0)
+    entries.append(a_entry)
+    entries.append(b_entry)
 
     manifest = {
         "generated_by": "scripts/make-fixtures.py",
