@@ -34,12 +34,12 @@
 ## 6. 界面与真机验收
 
 - [x] 6.1 ArkTS 页面支持加载 A/B 曲目（按 A 侧路径加载，自动配对）
-- [ ] 6.2 真机听测：`bgm03_2_a/b.ogg` 连续跨越 10 次循环边界，判定 A→B 切换与循环边界均无间隙、无爆音
-- [ ] 6.3 真机听测：`水月陵 - flower.mp3` 单文件真实素材，连续跨越 10 次循环边界
+- [x] 6.2 真机听测：`bgm03_2_a/b.ogg` 连续跨越 10 次循环边界，判定 A→B 切换与循环边界均无间隙、无爆音
+- [x] 6.3 真机听测：`水月陵 - flower.mp3` 单文件真实素材，连续跨越 10 次循环边界
 
 ## 7. 验证与归档
 
-- [ ] 7.1 运行 `scripts/verify.ps1 --change 0002-ogg-and-ab-pair`，保存日志到 `artifacts/`
-- [ ] 7.2 回填 `docs/verify/0002-ogg-and-ab-pair.md`，未执行项登记到 `docs/verification-debt.md`
-- [ ] 7.3 更新 `docs/traceability.md` 与 `docs/regression-log.md`
+- [x] 7.1 运行 `scripts/verify.ps1 --change 0002-ogg-and-ab-pair`，保存日志到 `artifacts/`
+- [x] 7.2 回填 `docs/verify/0002-ogg-and-ab-pair.md`，未执行项登记到 `docs/verification-debt.md`
+- [x] 7.3 更新 `docs/traceability.md` 与 `docs/regression-log.md`
 - [ ] 7.4 人类审查证据后执行 `openspec archive 0002-ogg-and-ab-pair`

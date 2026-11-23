@@ -29,7 +29,13 @@
 | 听感验收 | T15 循环边界无静音间隙 | 人工听测 | 通过 | 2026-11-23 真机跨越 18 次循环边界，`total underrun bytes=0`，人类判定「无间隙、无爆音」 |
 | 听感验收 | T16 循环边界无爆音 | 人工听测 | 通过 | 同上；合成 fixture 相位连续性数值验证 + 真机听测「无爆音」 |
 | 听感验收 | T05 播放中改循环点无明显中断 | 人工听测 | 通过 | 2026-11-23 真机改点 33075→77175，欠载 8192 字节（≈93ms < 200ms），人类判定「无明显中断」 |
-| 真实素材 | `fixtures/real/` 真实曲目听测 | 人工听测 | 阻塞 | 待用户提供素材与循环点数值 |
+| `Decoder` | F01~F03 OGG 解码（格式上报 / 总帧数 / seek） | `DecoderTests` | 通过 | 2026-11-23 实测：75 断言 / 0 失败；4 个真实 OGG 文件 `totalFrames == decodedFrames` |
+| `AbPair` | P01~P03 A/B 配对识别 | `AbPairTests` | 通过 | 2026-11-23 实测：10 用例 / 45 断言 / 0 失败；三组后缀、大小写不敏感、扩展名保留、退化单文件 |
+| `AudioSource` | P04~P07 虚拟时间轴数据源 | `AudioSourceTests` | 通过 | 2026-11-23 实测：12 用例 / 62 断言 / 0 失败；跨文件连续读、跨文件 seek、三个边界 |
+| `PlaybackEngine` | A/B 自动识别与虚拟轴循环 | `TransportTests` | 通过 | 2026-11-23 实测：`testLoadDetectsAbPair` / `testAbPairLoopsOnVirtualTimeline` 通过 |
+| 听感验收 | P06 真实 A/B（bgm03_2）A→B 切换与循环边界 | 人工听测 | 通过 | 2026-11-23 真机 MRT-AL10，人类判定「播放效果良好」 |
+| 听感验收 | 真实单文件（flower.mp3）循环边界 | 人工听测 | 通过 | 2026-11-23 真机 MRT-AL10，人类判定「播放效果良好」 |
+| 真实素材 | `fixtures/real/` 真实曲目听测 | 人工听测 | 通过 | 2026-11-23 真机听测 bgm03_2_a/b.ogg 与 水月陵 - flower.mp3，人类判定「播放效果良好」 |
 
 ## 已关闭
 
@@ -56,3 +62,8 @@
 | 2026-11-05 | 最小界面构建与打包（任务 6.1） | 部分通过 | `artifacts/verify-0001-harmony-loop-kernel-20261105-191425.log`；`CompileArkTS` 与 `SignHap` 通过，rawfile fixture 已入 HAP；真机运行待 6.2 |
 | 2026-11-05 | Build 阶段证据收口（任务 7.1~7.4） | 通过 | `artifacts/verify-0001-harmony-loop-kernel-20261105-191954.log`；4 steps / 0 failed，10 套件 / 1172 断言，`traceability` 与 `regression-log` 已更新 |
 | 2026-11-23 | 真机循环听测（任务 6.2 / 6.3） | 通过 | 真机 MRT-AL10：跨越 18 次循环边界欠载 0 字节、改点欠载 8192 字节；人类判定「无间隙、无爆音」「无明显中断」；截图 `artifacts/slh_ui_6_2_*.jpeg`、`slh_ui_6_3_*.jpeg` |
+| 2026-11-23 | OGG 解码 F01~F03（任务 2.1~2.3） | 通过 | `artifacts/verify-0002-ogg-and-ab-pair-20261123-110442.log`；`DecoderTests` 75 断言 / 0 失败 |
+| 2026-11-23 | A/B 配对 P01~P03（任务 3.1~3.2） | 通过 | 同上；`AbPairTests` 10 用例 / 45 断言 / 0 失败 |
+| 2026-11-23 | 虚拟时间轴 P04~P07（任务 4.1~4.3） | 通过 | 同上；`AudioSourceTests` 12 用例 / 62 断言 / 0 失败 |
+| 2026-11-23 | 循环内核接入虚拟轴（任务 5.1~5.3） | 通过 | 同上；12 套件 / 1325 断言 / 0 失败，0001 的 10 套件无退化 |
+| 2026-11-23 | 真实素材真机听测（任务 6.2 / 6.3） | 通过 | 真机 MRT-AL10：bgm03_2_a/b.ogg 与 水月陵 - flower.mp3，人类判定「播放效果良好」 |

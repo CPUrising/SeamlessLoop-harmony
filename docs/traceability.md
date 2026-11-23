@@ -25,6 +25,26 @@
 | T16 | 循环边界无爆音 | 同上 → `T16` | 离线波形分析 + 真机听测 | 通过（相位连续性数值验证 + 真机听感「无爆音」） |
 | T17 | 缓冲欠载可恢复 | 同上 → `T17` | `RingBufferTests` + `AudioOutputLogicTests` + `underrun` 事件 | 通过（三条全部实测：静音填充、恢复续播、事件端到端） |
 
+## audio-format-support
+
+| ID | 场景 | 规范位置 | 自动化测试 | 状态 |
+|---|---|---|---|---|
+| F01 | OGG 文件加载与格式上报 | `changes/0002-ogg-and-ab-pair/specs/audio-format-support` → `F01` | `DecoderTests.testLoadReportsFormatOgg` + `testOggDecodedFramesMatchTotal` | 通过 |
+| F02 | OGG 按采样点跳转 | 同上 → `F02` | `DecoderTests.testOggSeekMatchesSequentialDecode` | 通过 |
+| F03 | 不支持的扩展名明确失败 | 同上 → `F03` | `DecoderTests.testOpenRejectsNonAudio` | 通过 |
+
+## ab-pair-playback
+
+| ID | 场景 | 规范位置 | 自动化测试 | 状态 |
+|---|---|---|---|---|
+| P01 | 三组后缀均可配对 | `changes/0002-ogg-and-ab-pair/specs/ab-pair-playback` → `P01` | `AbPairTests.testLowercasePairFromA/FromB` + `testUppercasePair` + `testStartEndPair` + `testCaseInsensitiveMatching` + `testExtensionPreserved` | 通过 |
+| P02 | 找不到配对时退化为单文件 | 同上 → `P02` | `AbPairTests.testMissingCounterpartDegradesToSingle` | 通过 |
+| P03 | 非 A/B 文件不受影响 | 同上 → `P03` | `AbPairTests.testNonPairNames` + `testSingleFileNotPair` + `TransportTests.testLoadSingleFileIsNotPair` | 通过 |
+| P04 | 虚拟轴总长等于两文件之和 | 同上 → `P04` | `AudioSourceTests.testPairReportsVirtualTotal` + `TransportTests.testLoadDetectsAbPair` | 通过 |
+| P05 | A 播完无缝接 B | 同上 → `P05` | `AudioSourceTests.testCrossFileReadIsContinuous` + `testReadAcrossBoundaryReturnsFullCount` | 通过 |
+| P06 | 循环点在虚拟轴上生效 | 同上 → `P06` | `TransportTests.testAbPairLoopsOnVirtualTimeline` + 真机听测 | 通过（真机判定「播放效果良好」） |
+| P07 | 虚拟轴 seek 跨文件 | 同上 → `P07` | `AudioSourceTests.testSeekWithinA` + `testSeekIntoB` + `testBoundaryPositions` + `testSeekIntoBReturnsBData` | 通过 |
+
 ## 状态取值
 
 `未实现` / `已实现待执行` / `部分通过` / `通过` / `失败`
@@ -46,3 +66,4 @@
 | 2026-11-05 | `0001-harmony-loop-kernel` | 任务 5.3 完成：napi 暴露完整 API 与 `loop` / `end` / `underrun` 事件（ThreadSafeFunction）；T17 第 3 条已接线，真机端到端待 6.2 |
 | 2026-11-05 | `0001-harmony-loop-kernel` | 任务 6.1 完成：最小 ArkTS 页面（fixture 加载、播放/暂停、进度与循环次数）；T15 / T16 由「未实现」改为「已实现待执行」，听测仍阻塞于真机断开 |
 | 2026-11-23 | `0001-harmony-loop-kernel` | 任务 6.2 / 6.3 完成：真机跨越 18 次循环边界欠载 0 字节、改点欠载 8192 字节；T15 / T16 / T17 / T05 全部转为「通过」 |
+| 2026-11-23 | `0002-ogg-and-ab-pair` | 新增 F01~F03（OGG 解码）与 P01~P07（A/B 配对与虚拟时间轴）共 10 条场景，全部通过；T01~T04 坐标基准改为虚拟时间轴，单文件路径语义不变 |
