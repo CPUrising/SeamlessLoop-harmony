@@ -141,7 +141,7 @@ TEST_CASE(testProgressContinuousAcrossLoopBoundary)
 // T11 集成：真实解码线程从 0 播到 LoopStart，进度必须等于解码位置。
 TEST_CASE(testProgressMatchesDecodePositionDuringIntro)
 {
-    slh::AudioDecoder dec;
+    slh::AudioSource dec;
     CHECK_TRUE(dec.Open(FixturePath("intro_loop_44100_mono.wav").c_str()));
     CHECK_EQ(dec.Format().totalFrames, kTotal);
 
@@ -163,7 +163,7 @@ TEST_CASE(testProgressMatchesDecodePositionDuringIntro)
 // T10 集成：连续跨越多次循环边界，进度采样必须单调不减且不出现大幅前跳。
 TEST_CASE(testProgressMonotonicAcrossRealLoops)
 {
-    slh::AudioDecoder dec;
+    slh::AudioSource dec;
     CHECK_TRUE(dec.Open(FixturePath("intro_loop_44100_mono.wav").c_str()));
 
     slh::RingBuffer ring(44100);
@@ -214,7 +214,7 @@ TEST_CASE(testProgressMonotonicAcrossRealLoops)
 // 改点与 seek 后计数归零，补偿随之清零（进度允许在此处回退）。
 TEST_CASE(testCompensationResetAfterRangeChange)
 {
-    slh::AudioDecoder dec;
+    slh::AudioSource dec;
     CHECK_TRUE(dec.Open(FixturePath("intro_loop_44100_mono.wav").c_str()));
 
     slh::RingBuffer ring(44100);

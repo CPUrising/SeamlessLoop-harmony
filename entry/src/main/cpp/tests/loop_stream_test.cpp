@@ -95,7 +95,7 @@ struct EndEvents {
 // T07 主场景：循环播放中关闭循环，播到末尾停止并上报。
 TEST_CASE(testLoopDisabledStopsAtEnd)
 {
-    slh::AudioDecoder dec;
+    slh::AudioSource dec;
     CHECK_TRUE(dec.Open(FixturePath("intro_loop_44100_mono.wav").c_str()));
     const int64_t total = dec.Format().totalFrames;
 
@@ -138,7 +138,7 @@ TEST_CASE(testLoopDisabledStopsAtEnd)
 // 结束后写回调仍应输出静音（T07 的「保持静音输出」）。
 TEST_CASE(testSilenceAfterEnd)
 {
-    slh::AudioDecoder dec;
+    slh::AudioSource dec;
     CHECK_TRUE(dec.Open(FixturePath("intro_loop_44100_mono.wav").c_str()));
 
     slh::RingBuffer ring(44100 * 2);
@@ -176,7 +176,7 @@ TEST_CASE(testSilenceAfterEnd)
 // 结束事件只触发一次：多等一会儿也不会重复上报。
 TEST_CASE(testEndEventFiresExactlyOnce)
 {
-    slh::AudioDecoder dec;
+    slh::AudioSource dec;
     CHECK_TRUE(dec.Open(FixturePath("intro_loop_44100_mono.wav").c_str()));
 
     slh::RingBuffer ring(44100 * 2);
@@ -197,7 +197,7 @@ TEST_CASE(testEndEventFiresExactlyOnce)
 // 循环期间永远不该触发结束事件（循环跳转使解码位置不会推进到 EOF）。
 TEST_CASE(testNoEndEventWhileLooping)
 {
-    slh::AudioDecoder dec;
+    slh::AudioSource dec;
     CHECK_TRUE(dec.Open(FixturePath("intro_loop_44100_mono.wav").c_str()));
 
     slh::RingBuffer ring(44100 * 2);
@@ -221,7 +221,7 @@ TEST_CASE(testNoEndEventWhileLooping)
 // 未登记结束回调时到达末尾不得崩溃。
 TEST_CASE(testEndWithoutCallbackIsSafe)
 {
-    slh::AudioDecoder dec;
+    slh::AudioSource dec;
     CHECK_TRUE(dec.Open(FixturePath("intro_loop_44100_mono.wav").c_str()));
 
     slh::RingBuffer ring(44100 * 2);

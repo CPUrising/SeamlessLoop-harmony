@@ -2,8 +2,12 @@
  * DecodeThread：独立解码线程。
  *
  * 职责（对应 design.md 决策 2 / 3）：
- * - 在自己的线程里持续从 AudioDecoder 读 PCM，写入 RingBuffer。
+ * - 在自己的线程里持续从 AudioSource 读 PCM，写入 RingBuffer。
  * - FIFO 满时等待，绝不阻塞 OHAudio 回调线程。
+ * 数据源抽象：
+ * - AudioSource 对外暴露与 AudioDecoder 相同的 Format / SeekToFrame / ReadFrames，
+ *   内部可能是单文件，也可能是 A/B 双文件串成的虚拟时间轴。
+ *   因此本类的循环跳转逻辑对两种模式完全一致，无需感知文件切换。
  * 循环跳转与计数：
  * - 循环开启时，解码位置到达 LoopEnd 就在本线程内 seek 回 LoopStart，
  *   因此 FIFO 里永远是「已拼接好的连续数据」，回调侧感知不到循环。
@@ -33,7 +37,7 @@
 #include <thread>
 #include <vector>
 
-#include "audio_decoder.h"
+#include "audio_source.h"
 #include "loop_counter.h"
 #include "ring_buffer.h"
 
@@ -41,15 +45,15 @@ namespace slh {
 
 class DecodeThread {
 public:
-    // chunkFrames：每次从解码器读取的帧数。默认 4096 帧，
+    // chunkFrames：每次从数据源读取的帧数。默认 4096 帧，
     // 48kHz 下约 85ms，足够摊薄解码调用开销。
-    DecodeThread(AudioDecoder* decoder, RingBuffer* ring, int64_t chunkFrames = 4096);
+    DecodeThread(AudioSource* source, RingBuffer* ring, int64_t chunkFrames = 4096);
     ~DecodeThread();
 
     DecodeThread(const DecodeThread&) = delete;
     DecodeThread& operator=(const DecodeThread&) = delete;
 
-    // 启动解码线程。重复调用无副作用。decoder 未打开时返回 false。
+    // 启动解码线程。重复调用无副作用。数据源未打开时返回 false。
     bool Start();
 
     // 请求停止并等待线程退出。可重复调用。
@@ -103,7 +107,7 @@ public:
     // 跳转到指定帧并等待生效（T14）。
     // 线程运行中：投递请求给解码线程，等它真正 seek 完成才返回；
     // 线程未运行：直接 seek（此时无并发，安全）。
-    // 返回 false 表示解码器未打开或 seek 失败。
+    // 返回 false 表示数据源未打开或 seek 失败。
     bool SeekToFrame(int64_t frame);
 
 private:
@@ -119,7 +123,7 @@ private:
     // 标记到达末尾并上报（只触发一次）。
     void NotifyEnd();
 
-    AudioDecoder* decoder_ = nullptr;
+    AudioSource* source_ = nullptr;
     RingBuffer* ring_ = nullptr;
     int64_t chunkFrames_ = 4096;
 

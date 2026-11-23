@@ -2,8 +2,9 @@
  * PlaybackEngine：播放控制门面（对应任务 5.2，覆盖 T13 / T14）。
  *
  * 职责：
- * - 持有 AudioDecoder / RingBuffer / DecodeThread 三件套，对外只暴露
+ * - 持有 AudioSource / RingBuffer / DecodeThread 三件套，对外只暴露
  *   load / play / pause / stop / seekToSample / 进度查询。
+ * - Load 时自动识别 A/B 配对：命中则按虚拟时间轴加载，否则按单文件加载。
  * - 不依赖 OHAudio：渲染器的启停由桥接层负责，本类只负责「供数」。
  *   这样播放控制逻辑可以在开发机上完整单测。
  *
@@ -27,7 +28,7 @@
 #include <memory>
 #include <string>
 
-#include "audio_decoder.h"
+#include "audio_source.h"
 #include "decode_thread.h"
 #include "ring_buffer.h"
 
@@ -49,6 +50,7 @@ public:
     PlaybackEngine& operator=(const PlaybackEngine&) = delete;
 
     // 加载文件并准备 2 秒 FIFO。重复调用会先释放上一个文件。
+    // 若 path 属于 A/B 对（同目录存在配对文件），自动按虚拟时间轴加载。
     // 失败返回 false，状态回到 kIdle。
     bool Load(const char* path);
 
@@ -82,7 +84,11 @@ public:
     // 供桥接层与测试访问内部组件；生命周期由本类管理。
     RingBuffer* Ring() { return ring_.get(); }
     DecodeThread* Decoder() { return decodeThread_.get(); }
+    AudioSource* Source() { return source_.get(); }
     const AudioFormatInfo& Format() const;
+
+    // 当前加载的是否为 A/B 双文件（虚拟时间轴）。
+    bool IsPair() const { return source_ != nullptr && source_->IsPair(); }
 
     // 循环区间与开关，直接转发给解码线程。
     bool SetLoopRange(int64_t startFrame, int64_t endFrame);
@@ -103,7 +109,7 @@ private:
     // 只有在确认没有消费者（等待超时）时才直接 Clear()。
     void FlushBuffer();
 
-    std::unique_ptr<AudioDecoder> decoder_;
+    std::unique_ptr<AudioSource> source_;
     std::unique_ptr<RingBuffer> ring_;
     std::unique_ptr<DecodeThread> decodeThread_;
     PlaybackState state_ = PlaybackState::kIdle;

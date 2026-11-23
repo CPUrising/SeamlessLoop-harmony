@@ -21,8 +21,8 @@ constexpr int kSeekWaitMs = 200;
 
 } // namespace
 
-DecodeThread::DecodeThread(AudioDecoder* decoder, RingBuffer* ring, int64_t chunkFrames)
-    : decoder_(decoder), ring_(ring), chunkFrames_(chunkFrames > 0 ? chunkFrames : 4096)
+DecodeThread::DecodeThread(AudioSource* source, RingBuffer* ring, int64_t chunkFrames)
+    : source_(source), ring_(ring), chunkFrames_(chunkFrames > 0 ? chunkFrames : 4096)
 {
 }
 
@@ -36,11 +36,11 @@ bool DecodeThread::Start()
     if (running_.load(std::memory_order_acquire)) {
         return true;
     }
-    if (decoder_ == nullptr || ring_ == nullptr || !decoder_->IsOpen()) {
+    if (source_ == nullptr || ring_ == nullptr || !source_->IsOpen()) {
         return false;
     }
 
-    const int32_t channels = decoder_->Format().channels;
+    const int32_t channels = source_->Format().channels;
     if (channels <= 0) {
         return false;
     }
@@ -52,7 +52,7 @@ bool DecodeThread::Start()
     reachedEnd_.store(false, std::memory_order_release);
     endNotified_.store(false, std::memory_order_release);
     decodedFrames_.store(0, std::memory_order_release);
-    decodedPosition_.store(decoder_->CurrentFrame(), std::memory_order_release);
+    decodedPosition_.store(source_->CurrentFrame(), std::memory_order_release);
     running_.store(true, std::memory_order_release);
 
     thread_ = std::thread(&DecodeThread::Run, this);
@@ -85,10 +85,10 @@ bool DecodeThread::ReachedEnd() const
 
 bool DecodeThread::SetLoopRange(int64_t startFrame, int64_t endFrame)
 {
-    if (decoder_ == nullptr || !decoder_->IsOpen()) {
+    if (source_ == nullptr || !source_->IsOpen()) {
         return false;
     }
-    const int64_t total = decoder_->Format().totalFrames;
+    const int64_t total = source_->Format().totalFrames;
     // 内部不变量防护：越界或退化区间一律不生效，避免解码线程忙转。
     // 业务层的归一化与错误上报由 LoopConfig 负责（任务 4.1）。
     if (startFrame < 0 || endFrame <= startFrame || endFrame > total) {
@@ -154,10 +154,10 @@ void DecodeThread::ResetLoopCount()
 
 int64_t DecodeThread::BufferedFrames() const
 {
-    if (decoder_ == nullptr || !decoder_->IsOpen()) {
+    if (source_ == nullptr || !source_->IsOpen()) {
         return 0;
     }
-    const int32_t channels = decoder_->Format().channels;
+    const int32_t channels = source_->Format().channels;
     if (channels <= 0) {
         return 0;
     }
@@ -167,7 +167,7 @@ int64_t DecodeThread::BufferedFrames() const
 
 int64_t DecodeThread::EstimatePlaybackFrame() const
 {
-    if (decoder_ == nullptr || !decoder_->IsOpen()) {
+    if (source_ == nullptr || !source_->IsOpen()) {
         return 0;
     }
     // 解码位置减 FIFO 未消费部分，近似扬声器位置。
@@ -178,7 +178,7 @@ int64_t DecodeThread::EstimatePlaybackFrame() const
 
 int64_t DecodeThread::PlaybackFrame() const
 {
-    if (decoder_ == nullptr || !decoder_->IsOpen()) {
+    if (source_ == nullptr || !source_->IsOpen()) {
         return 0;
     }
     // 用原始解码位置做补偿，而不是已扣减缓冲的估算值：
@@ -205,13 +205,13 @@ void DecodeThread::RequestSeek(int64_t frame)
 
 bool DecodeThread::SeekToFrame(int64_t frame)
 {
-    if (decoder_ == nullptr || !decoder_->IsOpen()) {
+    if (source_ == nullptr || !source_->IsOpen()) {
         return false;
     }
 
-    // 线程未运行：没有并发访问解码器，直接 seek。
+    // 线程未运行：没有并发访问数据源，直接 seek。
     if (!running_.load(std::memory_order_acquire)) {
-        const int64_t landed = decoder_->SeekToFrame(frame);
+        const int64_t landed = source_->SeekToFrame(frame);
         if (landed < 0) {
             return false;
         }
@@ -277,20 +277,20 @@ bool DecodeThread::LoopActive(int64_t* startFrame, int64_t* endFrame) const
 
 void DecodeThread::Run()
 {
-    const int32_t channels = decoder_->Format().channels;
+    const int32_t channels = source_->Format().channels;
     const size_t frameBytes = static_cast<size_t>(channels) * sizeof(int16_t);
 
     while (!stop_.load(std::memory_order_acquire)) {
         // 处理挂起的跳转请求（运行时改点 T05 / 后续 seek 接口）。
-        // seek 必须在解码线程内做：解码器状态不是线程安全的。
+        // seek 必须在解码线程内做：数据源状态不是线程安全的。
         const int64_t seekTarget = pendingSeek_.exchange(-1, std::memory_order_acq_rel);
         if (seekTarget >= 0) {
-            if (decoder_->SeekToFrame(seekTarget) < 0) {
+            if (source_->SeekToFrame(seekTarget) < 0) {
                 reachedEnd_.store(true, std::memory_order_release);
                 seekApplied_.fetch_add(1, std::memory_order_acq_rel);
                 break;
             }
-            decodedPosition_.store(decoder_->CurrentFrame(), std::memory_order_release);
+            decodedPosition_.store(source_->CurrentFrame(), std::memory_order_release);
             reachedEnd_.store(false, std::memory_order_release);
             // seek 后补偿必须清零（T08 / T14），并允许进度回退。
             loopCounter_.Reset();
@@ -324,17 +324,17 @@ void DecodeThread::Run()
         int64_t loopStart = 0;
         int64_t loopEnd = 0;
         if (LoopActive(&loopStart, &loopEnd)) {
-            const int64_t pos = decoder_->CurrentFrame();
+            const int64_t pos = source_->CurrentFrame();
             if (pos >= loopEnd) {
                 // 按帧 seek 天然满足 BlockAlign 对齐（一帧 = channels × 2 字节）。
-                if (decoder_->SeekToFrame(loopStart) < 0) {
+                if (source_->SeekToFrame(loopStart) < 0) {
                     // 区间已校验过，理论上不可达；失败按播放结束处理，避免忙转。
                     reachedEnd_.store(true, std::memory_order_release);
                     break;
                 }
                 // 跳转成功才算一次循环（T08）；循环关闭时不会走到这里（T09）。
                 loopCounter_.IncrementAndNotify();
-                decodedPosition_.store(decoder_->CurrentFrame(), std::memory_order_release);
+                decodedPosition_.store(source_->CurrentFrame(), std::memory_order_release);
                 continue; // 重新按新位置计算本次可读帧数
             }
             // 不越过 LoopEnd 多读，否则 FIFO 里会出现本该被跳过的数据。
@@ -347,7 +347,7 @@ void DecodeThread::Run()
         // 记录解码前的丢弃代次：解码耗时期间若发生改点/seek，这块数据就作废。
         const uint64_t flushGenerationAtRead = ring_->FlushRequestCount();
 
-        const int64_t got = decoder_->ReadFrames(scratch_.data(), frames);
+        const int64_t got = source_->ReadFrames(scratch_.data(), frames);
         if (got <= 0) {
             // 到达文件末尾（循环关闭时的正常结束）：停止推进并上报（T07）。
             // 线程退出后写回调继续输出静音，音频流不中断。
@@ -355,7 +355,7 @@ void DecodeThread::Run()
             break;
         }
         // 发布解码位置快照，供跨线程估算播放位置（T05 / T06 与任务 5.1）。
-        decodedPosition_.store(decoder_->CurrentFrame(), std::memory_order_release);
+        decodedPosition_.store(source_->CurrentFrame(), std::memory_order_release);
 
         // 这块数据可能读自「改点前」的位置：解码期间若发生过丢弃或跳转请求，
         // 它就不再属于新的播放位置，必须整块丢弃，否则会残留旧音频（T05）。

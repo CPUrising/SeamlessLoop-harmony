@@ -276,6 +276,60 @@ TEST_CASE(testReloadReleasesPreviousFile)
     CHECK_TRUE(engine.State() == slh::PlaybackState::kReady);
 }
 
+// P01 + P04：Load 时自动识别 A/B 对，总帧数为虚拟轴长度。
+TEST_CASE(testLoadDetectsAbPair)
+{
+    slh::PlaybackEngine engine;
+    CHECK_TRUE(engine.Load(FixturePath("ab_pair_44100_stereo_a.wav").c_str()));
+    CHECK_TRUE(engine.IsPair());
+    // A = 33075 帧、B = 88200 帧，虚拟轴总长 121275。
+    CHECK_EQ(engine.TotalFrames(), static_cast<int64_t>(121275));
+    CHECK_EQ(engine.Format().channels, 2);
+    CHECK_EQ(engine.Format().sampleRate, 44100);
+    CHECK_EQ(engine.DecodeFrame(), static_cast<int64_t>(0));
+
+    // 从 B 侧路径加载也必须归一化到同一对。
+    CHECK_TRUE(engine.Load(FixturePath("ab_pair_44100_stereo_b.wav").c_str()));
+    CHECK_TRUE(engine.IsPair());
+    CHECK_EQ(engine.TotalFrames(), static_cast<int64_t>(121275));
+}
+
+// P03：单文件加载不得被误判为 A/B 对。
+TEST_CASE(testLoadSingleFileIsNotPair)
+{
+    slh::PlaybackEngine engine;
+    CHECK_TRUE(engine.Load(FixturePath("intro_loop_44100_mono.wav").c_str()));
+    CHECK_FALSE(engine.IsPair());
+    CHECK_EQ(engine.TotalFrames(), kTotal);
+}
+
+// P05 + P06：A/B 虚拟轴上循环，输出必须是「A 全段 + B 循环体重复」。
+TEST_CASE(testAbPairLoopsOnVirtualTimeline)
+{
+    slh::PlaybackEngine engine;
+    CHECK_TRUE(engine.Load(FixturePath("ab_pair_44100_stereo_a.wav").c_str()));
+    CHECK_TRUE(engine.IsPair());
+
+    const int64_t aFrames = 33075;
+    const int64_t total = engine.TotalFrames();
+    // 循环点按虚拟轴表示：LoopStart = NA（B 的第 0 帧），LoopEnd = 总长。
+    CHECK_TRUE(engine.SetLoopRange(aFrames, total));
+    engine.SetLooping(true);
+    CHECK_TRUE(engine.IsLooping());
+
+    Drainer drainer(engine.Ring());
+    CHECK_TRUE(engine.Play());
+    CHECK_TRUE(WaitUntil([&] { return engine.LoopCount() >= 2; }, 15000));
+    // Stop() 会把循环计数归零，因此必须在停止前取快照。
+    const int64_t loops = engine.LoopCount();
+    const bool reachedEnd = engine.Decoder()->ReachedEnd();
+    engine.Stop();
+
+    CHECK_TRUE(loops >= 2);
+    // 循环期间不得判定为播放结束。
+    CHECK_FALSE(reachedEnd);
+}
+
 } // namespace
 
 int main()
@@ -291,5 +345,8 @@ int main()
     testStopResetsToStart_runner();
     testPlayPauseAreIdempotent_runner();
     testReloadReleasesPreviousFile_runner();
+    testLoadDetectsAbPair_runner();
+    testLoadSingleFileIsNotPair_runner();
+    testAbPairLoopsOnVirtualTimeline_runner();
     return Summarize("TransportTests");
 }

@@ -7,6 +7,8 @@
 #include <chrono>
 #include <thread>
 
+#include "ab_pair.h"
+
 namespace slh {
 namespace {
 
@@ -42,19 +44,26 @@ bool PlaybackEngine::Load(const char* path)
     if (path == nullptr) {
         return false;
     }
-    auto decoder = std::make_unique<AudioDecoder>();
-    if (!decoder->Open(path)) {
+
+    // 先尝试 A/B 配对：命中则按虚拟时间轴加载，否则退化为单文件（P02 / P03）。
+    auto source = std::make_unique<AudioSource>();
+    const AbPairResult pair = DetectAbPair(path);
+    if (pair.isPair) {
+        if (!source->OpenPair(pair.aPath.c_str(), pair.bPath.c_str())) {
+            return false;
+        }
+    } else if (!source->Open(path)) {
         return false;
     }
 
-    const size_t capacity = ComputeRingCapacity(decoder->Format());
+    const size_t capacity = ComputeRingCapacity(source->Format());
     if (capacity == 0) {
         return false;
     }
 
-    decoder_ = std::move(decoder);
+    source_ = std::move(source);
     ring_ = std::make_unique<RingBuffer>(capacity);
-    decodeThread_ = std::make_unique<DecodeThread>(decoder_.get(), ring_.get());
+    decodeThread_ = std::make_unique<DecodeThread>(source_.get(), ring_.get());
     state_ = PlaybackState::kReady;
     return true;
 }
@@ -71,7 +80,7 @@ void PlaybackEngine::ReleaseAll()
     }
     decodeThread_.reset();
     ring_.reset();
-    decoder_.reset();
+    source_.reset();
     state_ = PlaybackState::kIdle;
 }
 
@@ -158,27 +167,27 @@ int64_t PlaybackEngine::PlaybackFrame() const
 
 int64_t PlaybackEngine::DecodeFrame() const
 {
-    if (decoder_ == nullptr) {
+    if (source_ == nullptr) {
         return 0;
     }
-    return decoder_->CurrentFrame();
+    return source_->CurrentFrame();
 }
 
 int64_t PlaybackEngine::TotalFrames() const
 {
-    if (decoder_ == nullptr) {
+    if (source_ == nullptr) {
         return 0;
     }
-    return decoder_->Format().totalFrames;
+    return source_->Format().totalFrames;
 }
 
 const AudioFormatInfo& PlaybackEngine::Format() const
 {
     static const AudioFormatInfo kEmpty{};
-    if (decoder_ == nullptr) {
+    if (source_ == nullptr) {
         return kEmpty;
     }
-    return decoder_->Format();
+    return source_->Format();
 }
 
 bool PlaybackEngine::SetLoopRange(int64_t startFrame, int64_t endFrame)

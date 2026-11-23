@@ -27,9 +27,9 @@
 
 ## 5. 接入循环内核
 
-- [ ] 5.1 `DecodeThread` 数据源类型由 `AudioDecoder*` 改为 `AudioSource*`，循环跳转逻辑不改语义
-- [ ] 5.2 `PlaybackEngine` 相应调整，`Load` 时自动识别 A/B 对
-- [ ] 5.3 回归 0001 的全部 10 个测试套件，确认单文件路径无退化
+- [x] 5.1 `DecodeThread` 数据源类型由 `AudioDecoder*` 改为 `AudioSource*`，循环跳转逻辑不改语义
+- [x] 5.2 `PlaybackEngine` 相应调整，`Load` 时自动识别 A/B 对
+- [x] 5.3 回归 0001 的全部 10 个测试套件，确认单文件路径无退化
 
 ## 6. 界面与真机验收
 

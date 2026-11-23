@@ -49,7 +49,7 @@ bool WaitUntil(Pred pred, int timeoutMs = 10000)
 std::vector<int16_t> ReadWholeFile(const std::string& path, int64_t* totalOut)
 {
     std::vector<int16_t> data;
-    slh::AudioDecoder dec;
+    slh::AudioSource dec;
     if (!dec.Open(path.c_str())) {
         return data;
     }
@@ -149,7 +149,7 @@ TEST_CASE(testChangeOutsideRangeSeeks)
     const std::vector<int16_t> all = ReadWholeFile(path, &total);
     CHECK_EQ(total, static_cast<int64_t>(121275));
 
-    slh::AudioDecoder dec;
+    slh::AudioSource dec;
     CHECK_TRUE(dec.Open(path.c_str()));
     slh::RingBuffer ring(44100 * 2);
     ProbeConsumer consumer(&ring);
@@ -188,7 +188,7 @@ TEST_CASE(testChangeOutsideRangeSeeks)
 // T05 的另一半：清空 FIFO，不能把旧区间的残留音频播出去。
 TEST_CASE(testChangeOutsideRangeFlushesBufferedAudio)
 {
-    slh::AudioDecoder dec;
+    slh::AudioSource dec;
     CHECK_TRUE(dec.Open(FixturePath("intro_loop_44100_mono.wav").c_str()));
     const int64_t total = dec.Format().totalFrames;
 
@@ -217,7 +217,7 @@ TEST_CASE(testChangeOutsideRangeFlushesBufferedAudio)
 // T06：播放中把区间改到仍包含当前位置——不得跳转，继续播放。
 TEST_CASE(testChangeInsideRangeKeepsPosition)
 {
-    slh::AudioDecoder dec;
+    slh::AudioSource dec;
     CHECK_TRUE(dec.Open(FixturePath("intro_loop_44100_mono.wav").c_str()));
     const int64_t total = dec.Format().totalFrames;
 
@@ -252,7 +252,7 @@ TEST_CASE(testChangeInsideRangeKeepsPosition)
 // 循环未开启时改区间：只更新区间与计数，不得跳转（不应打断普通播放）。
 TEST_CASE(testChangeWhileNotLoopingDoesNotSeek)
 {
-    slh::AudioDecoder dec;
+    slh::AudioSource dec;
     CHECK_TRUE(dec.Open(FixturePath("intro_loop_44100_mono.wav").c_str()));
     const int64_t total = dec.Format().totalFrames;
 
@@ -279,7 +279,7 @@ TEST_CASE(testLoopStillWorksAfterRangeChange)
     int64_t total = 0;
     const std::vector<int16_t> all = ReadWholeFile(path, &total);
 
-    slh::AudioDecoder dec;
+    slh::AudioSource dec;
     CHECK_TRUE(dec.Open(path.c_str()));
     slh::RingBuffer ring(44100 * 2);
     ProbeConsumer consumer(&ring);

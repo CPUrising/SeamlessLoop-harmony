@@ -147,7 +147,7 @@ TEST_CASE(testIncrementWithoutCallbackIsSafe)
 // T08：真实循环跳转时计数单调递增并回调；循环点变更与显式重置后归零。
 TEST_CASE(testCounterIncrementsAndResets)
 {
-    slh::AudioDecoder dec;
+    slh::AudioSource dec;
     CHECK_TRUE(dec.Open(FixturePath("intro_loop_44100_mono.wav").c_str()));
     const int64_t total = dec.Format().totalFrames;
 
@@ -191,7 +191,7 @@ TEST_CASE(testCounterIncrementsAndResets)
 // 播放中途开启循环：计数从开启后的第一次跳转开始。
 TEST_CASE(testCounterOnlyCountsAfterLoopingEnabled)
 {
-    slh::AudioDecoder dec;
+    slh::AudioSource dec;
     CHECK_TRUE(dec.Open(FixturePath("intro_loop_44100_mono.wav").c_str()));
     const int64_t total = dec.Format().totalFrames;
 
@@ -216,7 +216,7 @@ TEST_CASE(testCounterOnlyCountsAfterLoopingEnabled)
 // T09：关闭循环播到末尾，不得触发任何循环事件。
 TEST_CASE(testNoEventWhenDisabled)
 {
-    slh::AudioDecoder dec;
+    slh::AudioSource dec;
     CHECK_TRUE(dec.Open(FixturePath("intro_loop_44100_mono.wav").c_str()));
     const int64_t total = dec.Format().totalFrames;
 

@@ -137,7 +137,7 @@ private:
 std::vector<int16_t> ReadWholeFile(const std::string& path, int64_t* totalOut)
 {
     std::vector<int16_t> data;
-    slh::AudioDecoder dec;
+    slh::AudioSource dec;
     if (!dec.Open(path.c_str())) {
         return data;
     }
@@ -157,7 +157,7 @@ std::vector<int16_t> ReadWholeFile(const std::string& path, int64_t* totalOut)
 // 启动后必须真的把数据解码进 FIFO。
 TEST_CASE(testDecodesIntoRingBuffer)
 {
-    slh::AudioDecoder dec;
+    slh::AudioSource dec;
     CHECK_TRUE(dec.Open(FixturePath("intro_loop_44100_mono.wav").c_str()));
     slh::RingBuffer ring(44100 * 1 * 2 * 2); // 2 秒
 
@@ -175,7 +175,7 @@ TEST_CASE(testDecodesIntoRingBuffer)
 // 完整播完：解码帧数必须等于文件总帧数，且标记到达末尾。
 TEST_CASE(testDecodesAllFramesAndReachesEnd)
 {
-    slh::AudioDecoder dec;
+    slh::AudioSource dec;
     CHECK_TRUE(dec.Open(FixturePath("intro_loop_44100_mono.wav").c_str()));
     const int64_t total = dec.Format().totalFrames;
 
@@ -197,7 +197,7 @@ TEST_CASE(testDecodesAllFramesAndReachesEnd)
 // FIFO 满时解码线程必须等待，不能丢数据也不能忙转。
 TEST_CASE(testWaitsWhenRingBufferFull)
 {
-    slh::AudioDecoder dec;
+    slh::AudioSource dec;
     CHECK_TRUE(dec.Open(FixturePath("intro_loop_44100_mono.wav").c_str()));
 
     // 容量故意设得很小：只够 64 帧。
@@ -223,7 +223,7 @@ TEST_CASE(testWaitsWhenRingBufferFull)
 // 停止后不再写入新数据。
 TEST_CASE(testStopHaltsDecoding)
 {
-    slh::AudioDecoder dec;
+    slh::AudioSource dec;
     CHECK_TRUE(dec.Open(FixturePath("intro_loop_44100_mono.wav").c_str()));
     slh::RingBuffer ring(44100 * 2 * 2);
     Drainer drainer(&ring);
@@ -243,7 +243,7 @@ TEST_CASE(testStopHaltsDecoding)
 // 未打开解码器时 Start 必须失败，不能启动野线程。
 TEST_CASE(testStartFailsWhenDecoderClosed)
 {
-    slh::AudioDecoder dec;
+    slh::AudioSource dec;
     slh::RingBuffer ring(1024);
     slh::DecodeThread dt(&dec, &ring);
     CHECK_FALSE(dt.Start());
@@ -254,7 +254,7 @@ TEST_CASE(testStartFailsWhenDecoderClosed)
 // 空指针防护。
 TEST_CASE(testStartFailsOnNullPointers)
 {
-    slh::AudioDecoder dec;
+    slh::AudioSource dec;
     CHECK_TRUE(dec.Open(FixturePath("intro_loop_44100_mono.wav").c_str()));
     slh::RingBuffer ring(1024);
 
@@ -268,7 +268,7 @@ TEST_CASE(testStartFailsOnNullPointers)
 // 立体声文件：写入字节数应为 帧数 × 4。
 TEST_CASE(testStereoWritesCorrectByteCount)
 {
-    slh::AudioDecoder dec;
+    slh::AudioSource dec;
     CHECK_TRUE(dec.Open(FixturePath("intro_loop_48000_stereo.wav").c_str()));
     const int64_t total = dec.Format().totalFrames;
 
@@ -300,7 +300,7 @@ TEST_CASE(testLoopJumpsBackToStart)
     const int64_t cycles = 2;
     const int64_t expectFrames = loopEnd + loopLen * cycles;
 
-    slh::AudioDecoder dec;
+    slh::AudioSource dec;
     CHECK_TRUE(dec.Open(path.c_str()));
     slh::RingBuffer ring(44100 * 2); // 1 秒
     CaptureSink sink(&ring);
@@ -346,7 +346,7 @@ TEST_CASE(testShortLoopRangeRepeatsBody)
     const int64_t cycles = 3;
     const int64_t expectFrames = loopEnd + loopLen * cycles;
 
-    slh::AudioDecoder dec;
+    slh::AudioSource dec;
     CHECK_TRUE(dec.Open(path.c_str()));
     slh::RingBuffer ring(44100 * 2);
     CaptureSink sink(&ring);
@@ -383,7 +383,7 @@ TEST_CASE(testStereoLoopKeepsFrameAlignment)
     const int64_t loopEnd = total;
     const int64_t loopLen = loopEnd - loopStart;
 
-    slh::AudioDecoder dec;
+    slh::AudioSource dec;
     CHECK_TRUE(dec.Open(path.c_str()));
     slh::RingBuffer ring(48000 * blockAlign);
     CaptureSink sink(&ring);
@@ -412,7 +412,7 @@ TEST_CASE(testStereoLoopKeepsFrameAlignment)
 // 循环区间校验：越界与退化一律拒绝；未设置区间时开循环无效。
 TEST_CASE(testLoopRangeValidation)
 {
-    slh::AudioDecoder dec;
+    slh::AudioSource dec;
     CHECK_TRUE(dec.Open(FixturePath("intro_loop_44100_mono.wav").c_str()));
     const int64_t total = dec.Format().totalFrames;
     slh::RingBuffer ring(1024);
@@ -435,7 +435,7 @@ TEST_CASE(testLoopRangeValidation)
     CHECK_FALSE(dt.IsLooping());
 
     // 解码器未打开时不得接受区间设置。
-    slh::AudioDecoder closed;
+    slh::AudioSource closed;
     slh::DecodeThread closedThread(&closed, &ring);
     CHECK_FALSE(closedThread.SetLoopRange(0, 100));
 }
@@ -443,7 +443,7 @@ TEST_CASE(testLoopRangeValidation)
 // 设置了区间但未开启循环：仍按原语义播到文件末尾并置结束标志。
 TEST_CASE(testLoopRangeWithoutLoopingPlaysToEnd)
 {
-    slh::AudioDecoder dec;
+    slh::AudioSource dec;
     CHECK_TRUE(dec.Open(FixturePath("intro_loop_44100_mono.wav").c_str()));
     const int64_t total = dec.Format().totalFrames;
 
