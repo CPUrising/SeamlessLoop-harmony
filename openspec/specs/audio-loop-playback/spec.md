@@ -7,7 +7,7 @@
 
 ### Requirement: Sample-Accurate Loop Jump
 
-系统 SHALL 以采样点数（int64）作为循环点的唯一单位，并在音频数据流层面完成循环跳转，不得依赖整曲重播。
+系统 SHALL 以采样点数（int64）作为循环点的唯一单位，并在音频数据流层面完成循环跳转，不得依赖整曲重播。循环点坐标的基准是**数据源的虚拟时间轴**：单文件时即文件内采样点，A/B 双文件时为两文件拼接后的采样点。
 
 #### Scenario: T01 循环终点跳回循环起点
 
@@ -19,14 +19,14 @@
 
 #### Scenario: T02 循环终点非法值归一化
 
-- **GIVEN** 已加载音频，总采样数为 `Total`
+- **GIVEN** 已加载音频，虚拟时间轴总采样数为 `Total`
 - **WHEN** 业务层设置 `LoopEnd` 为 `0`、负数，或大于 `Total`
 - **THEN** 系统 MUST 将生效的循环终点归一化为 `Total`
 - **AND** MUST NOT 因此中断播放
 
 #### Scenario: T03 循环起点非法值拒绝
 
-- **GIVEN** 已加载音频，总采样数为 `Total`
+- **GIVEN** 已加载音频，虚拟时间轴总采样数为 `Total`
 - **WHEN** 业务层设置 `LoopStart` 为负数、或大于等于 `Total`
 - **THEN** 系统 MUST 拒绝该设置并保持原循环起点不变
 - **AND** MUST 通过错误回调向业务层报告失败原因

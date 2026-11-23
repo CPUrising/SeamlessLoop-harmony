@@ -42,4 +42,4 @@
 - [x] 7.1 运行 `scripts/verify.ps1 --change 0002-ogg-and-ab-pair`，保存日志到 `artifacts/`
 - [x] 7.2 回填 `docs/verify/0002-ogg-and-ab-pair.md`，未执行项登记到 `docs/verification-debt.md`
 - [x] 7.3 更新 `docs/traceability.md` 与 `docs/regression-log.md`
-- [ ] 7.4 人类审查证据后执行 `openspec archive 0002-ogg-and-ab-pair`
+- [x] 7.4 人类审查证据后执行 `openspec archive 0002-ogg-and-ab-pair`
