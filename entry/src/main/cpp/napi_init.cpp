@@ -279,6 +279,11 @@ napi_value GetFormat(napi_env env, napi_callback_info info)
     napi_create_int64(env, info2.totalFrames, &totalFrames);
     napi_set_named_property(env, obj, "totalFrames", totalFrames);
 
+    // 是否按 A/B 双文件（虚拟时间轴）加载，供界面显示。
+    napi_value isPair = nullptr;
+    napi_get_boolean(env, g_engine.IsPair(), &isPair);
+    napi_set_named_property(env, obj, "isPair", isPair);
+
     return obj;
 }
 

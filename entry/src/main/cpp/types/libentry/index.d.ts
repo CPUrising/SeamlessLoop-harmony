@@ -8,6 +8,8 @@ export interface AudioFormat {
   sampleRate: number;
   channels: number;
   totalFrames: number;
+  /** 是否按 A/B 双文件（虚拟时间轴）加载。 */
+  isPair: boolean;
 }
 
 /** 事件名。 */
