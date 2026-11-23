@@ -6,15 +6,15 @@
 |---|---|
 | change id | `0001-harmony-loop-kernel` |
 | 执行人 | AI 智能体（TRAE） |
-| 执行时间 | 2026-11-05 19:19（最近一次） |
+| 执行时间 | 2026-11-23 09:41（最近一次） |
 | 机器 / 系统 | Windows 11（开发机） |
 | 工具链版本 | OpenSpec CLI 1.14.3；CMake 4.2.3；MSVC 19.44.35228.0；Python 3.14 + numpy 2.5.3；ffmpeg N-122110；DevEco Studio 26.0.0（build DS-261.23567.138.36.2600865）；hvigor 6.26.9 |
-| 运行环境 | HarmonyOS SDK 26.0.0.105（apiVersion 26，Release）；hdc 3.2.0f；**真机 MRT-AL10（序列号 5KTUT25424016774，API 26，系统 7.0.0.111(SP12C00E111R5P2)）于 19:06 断开，当前 `hdc list targets` 为空** |
+| 运行环境 | HarmonyOS SDK 26.0.0.105（apiVersion 26，Release）；hdc 3.2.0f；**真机 MRT-AL10（序列号 5KTUT25424016774，API 26，系统 7.0.0.111(SP12C00E111R5P2)）于 2026-11-23 09:30 重新接入，完成 6.2 / 6.3 听测** |
 | 命令 | `powershell -File scripts/verify.ps1 --change 0001-harmony-loop-kernel` |
-| 日志 | `artifacts/verify-0001-harmony-loop-kernel-20261105-191954.log` |
+| 日志 | `artifacts/verify-0001-harmony-loop-kernel-20261123-094120.log` |
 | 结果包 | `fixtures/synthetic/` 3 个音频 + `fixtures/manifest.json`；`entry/build/default/outputs/default/entry-default-signed.hap`（3 713 719 B，含 `libs/arm64-v8a/libentry.so`、`libs/x86_64/libentry.so` 与 `resources/rawfile/intro_loop_44100_mono.wav`） |
 
-**本次验证范围**：任务 1.1、2.2~2.5、3.1~3.5、4.1~4.5、5.1~5.3、6.1、7.1~7.4 已完成。本机单元测试 10 套件 / 1172 断言全通过；真机 G0 冒烟（2.5）已实测通过。仍未完成：任务 6.2 / 6.3 真机听测（真机于 19:06 断开，`hdc list targets` 为空）、任务 1.3 真实素材、任务 7.5 归档（需人类批准）。功能场景 T15~T16 仍为 `NOT RUN`；T05 的 200ms 听感条款待 6.3；T17 第 3 条事件已接线但未真机验证。
+**本次验证范围**：任务 1.1、2.2~2.5、3.1~3.5、4.1~4.5、5.1~5.3、6.1~6.3、7.1~7.4 已完成。本机单元测试 10 套件 / 1172 断言全通过；真机 G0 冒烟（2.5）与循环听测（6.2 / 6.3）均已实测通过。仍未完成：任务 1.3 真实素材、任务 7.5 归档（需人类批准）。
 
 ## 2. 需求覆盖
 
@@ -24,7 +24,7 @@
 | Sample-Accurate Loop Jump | T02 | `LoopConfigTests.testInvalidEndNormalized` | **部分通过** | 终点 0 / -1 / -4096 / Total+1 / Total×2 均归一化为 Total，起点保持不变，错误回调未触发；「播放不中断」需运行时设置链路（任务 4.4 / 5.3） |
 | Sample-Accurate Loop Jump | T03 | `LoopConfigTests.testInvalidStartRejected` | **PASS** | 起点 -1 / -Total / Total / Total+1 均返回 `kInvalidStart`，原区间保持不变，回调收到 4 次 `kInvalidStart` |
 | Sample-Accurate Loop Jump | T04 | `LoopConfigTests.testDegenerateRangeRejected` | **PASS** | `End == Start`、`End < Start`、`End=1 < Start` 三种退化形态均被拒绝，原区间不变，不进入空区间 |
-| Loop Configuration At Runtime | T05 | `LoopRangeChangeTests.testChangeOutsideRangeSeeks` + `testChangeOutsideRangeFlushesBufferedAudio` + 真机听测 | **部分通过** | 改点后跳转落点与 FIFO 清空已实测；200ms 无感中断属听感条款，待任务 6.3 |
+| Loop Configuration At Runtime | T05 | `LoopRangeChangeTests.testChangeOutsideRangeSeeks` + `testChangeOutsideRangeFlushesBufferedAudio` + 真机听测 | **PASS** | 改点后跳转落点与 FIFO 清空已实测；2026-11-23 真机改点 33075→77175，欠载 8192 字节（≈93ms，< 200ms），人类判定「无明显中断」 |
 | Loop Configuration At Runtime | T06 | `LoopRangeChangeTests.testChangeInsideRangeKeepsPosition` | **PASS** | 位置仍在新区间内时不触发清空与跳转，解码持续推进 |
 | Loop Configuration At Runtime | T07 | `LoopStreamTests.testLoopDisabledStopsAtEnd` | **PASS** | 循环播放中关闭循环后不再跳转，播到末尾停止推进，结束回调恰好触发一次；排空后写回调持续输出静音 |
 | Loop Cycle Reporting | T08 | `LoopCounterTests.testCounterIncrementsAndResets` | **PASS** | 真实循环跳转下计数与回调累计值一致（1,2,3…单调递增）；循环点变更后归零；`ResetLoopCount()` 后可重新从 1 计数 |
@@ -34,9 +34,9 @@
 | Playback Transport Control | T12 | `DecoderTests.testLoadReportsFormat` | **PASS** | 实测 WAV 单声道/立体声与 MP3 均正确报出采样率、声道数、总采样数；起始位置为 0 |
 | Playback Transport Control | T13 | `TransportTests.testPauseResumeKeepsPosition` | **PASS** | 暂停后解码位置 100ms 内不推进；恢复后从暂停点继续，偏差 < 4410 帧（100ms @44.1kHz） |
 | Playback Transport Control | T14 | `TransportTests.testSeekClampsAndAligns` + `testSeekWhilePlayingFlushesBuffer` | **PASS** | 未播放时 seek 精确落点；`-1 → 0`、`total+999999 → total`；播放中 seek 后 FIFO 丢弃请求被消费者应用，无残留 |
-| Continuous Audio Output | T15 | 离线波形分析 + 真机听测 | NOT RUN | 无真机；合成 fixture 已就绪 |
-| Continuous Audio Output | T16 | 离线波形分析 + 真机听测 | NOT RUN | 无真机；合成 fixture 已就绪，相位连续性已数值验证 |
-| Continuous Audio Output | T17 | `RingBufferTests` + `AudioOutputLogicTests` + `underrun` 事件 | **部分通过** | 第 1 条（静音填充）、第 2 条（恢复后继续播放）已通过；第 3 条事件已在 napi 层接线（`on('underrun')`），真机端到端待 6.2 |
+| Continuous Audio Output | T15 | 离线波形分析 + 真机听测 | **PASS** | 2026-11-23 真机 MRT-AL10：连续跨越 18 次循环边界（循环 7→18），`total underrun bytes=0`；人类判定「无间隙、无爆音」 |
+| Continuous Audio Output | T16 | 离线波形分析 + 真机听测 | **PASS** | 同上；合成 fixture 相位连续性数值验证（比值 0.50 ≤ 1.5）+ 真机听测「无爆音」 |
+| Continuous Audio Output | T17 | `RingBufferTests` + `AudioOutputLogicTests` + `underrun` 事件 | **PASS** | 第 1 条（静音填充）、第 2 条（恢复后继续播放）单测通过；第 3 条事件端到端实测：正常循环播放期间页面显示「欠载 0 字节」，改点瞬间上报 8192 字节 |
 
 ## 3. 回归
 
@@ -47,6 +47,7 @@
 | 合成 fixture 相位连续性 | 离线 numpy 检查 | **PASS**（见 D5 说明） |
 | 全量单元测试 | `scripts/verify.ps1 --scope unit` | **PASS**（10 套件 / 1172 断言 / 0 失败） |
 | HAP 构建 | `hvigorw --mode module -p product=default --no-daemon assembleHap` | **PASS**（BUILD SUCCESSFUL，产出 signed HAP） |
+| 真机循环听测 | 真机安装 + `aa start` + 手动操作 | **PASS**（2026-11-23，见「任务 6.2 / 6.3 真机听测」） |
 | Native 库链接 | `llvm-readelf -d libentry.so` | **PASS**（NEEDED 含 `libohaudio.so`、`libhilog_ndk.z.so`、`libace_napi.z.so`） |
 | 既有通过项是否回退 | 本变更为首次变更，无既有基线 | N/A |
 
@@ -245,6 +246,20 @@
 | 7.4 基线更新 | `docs/traceability.md` 17 条场景状态与变更记录已更新；`docs/regression-log.md` 追加 2026-11-05 收口行 |
 | 7.5 归档 | **NOT RUN**：需人类审查证据后执行，未提前归档 |
 
+### 任务 6.2 / 6.3 真机听测（2026-11-23 09:30~09:36）
+
+设备：HUAWEI MRT-AL10（序列号 `5KTUT25424016774`），OpenHarmony 7.0.0.111(SP12C00E111R5P2)，API 26。安装 `entry-default-signed.hap` 成功，`aa start` 启动成功。
+
+| 检查项 | 实测结果 |
+|---|---|
+| fixture 加载 | 日志 `loaded /data/storage/el2/base/haps/entry/files/intro_loop_44100_mono.wav, loop 33075 -> 121275`，与 `fixtures/manifest.json` 一致 |
+| 渲染器数据源 | 日志 `renderer started: 44100 Hz, 1 ch, source=ring buffer`（修正前该行误报 `tone fallback`，见 B8） |
+| T15 无静音间隙 | 连续播放跨越 18 次循环边界（进度 13.56 s → 36.22 s，循环 7 → 18 次），页面「欠载 0 字节」，日志 `total underrun bytes=0`；人类判定「无间隙、无爆音」 |
+| T16 无爆音 | 同上；合成 fixture 相位连续性数值验证（边界突变/循环体最大波动 = 0.50 ≤ 1.5） |
+| T17 第 3 条端到端 | 正常循环期间欠载计数保持 0；改点瞬间上报 8192 字节（4096 帧 ≈ 93 ms），此后 30 次循环无新增 |
+| T05 改点听感 | 播放中改点 33075 → 77175，欠载 8192 字节（≈93 ms < 200 ms），人类判定「无明显中断」 |
+| 截图证据 | `artifacts/slh_ui_6_1.jpeg`（首次加载）、`slh_ui_6_2_layout.jpeg`（循环 7 次 / 欠载 0）、`slh_ui_6_2_10loops.jpeg`（循环 18 次 / 欠载 0）、`slh_ui_6_3_after_change.jpeg`（改点后欠载 8192）、`slh_ui_6_3_after10s.jpeg`（改点后 30 次循环欠载仍 8192） |
+
 ### 测试过程中发现并修正的缺陷
 
 | 编号 | 缺陷 | 处理 |
@@ -256,6 +271,9 @@
 | B5 | 任务 5.2 二跑 `testStopResetsToStart` 失败：`AvailableToRead()` 残留 78096 字节 | 确认为**实现缺陷**：`Stop()` 在消费者仍在运行时直接 `Clear()`，与 `Read()` 竞争写 `readCounter_`，破坏 SPSC 前提。抽出 `FlushBuffer()`：优先 `RequestFlush` 等消费者应用，超时才直接 `Clear()` |
 | B6 | 任务 5.2 三跑 `ProgressTests` 出现进度回退（3 处失败） | 确认为**实现缺陷**：`decodedPosition_` 与 `loopCounter_` 不是同一原子快照，循环跳转瞬间读到不一致组合导致读数回退，违反 T10。新增 `lastPlayback_` 单调保护，并在 seek / 改点 / 计数重置时放开 |
 | B7 | 任务 5.3 验证时 `LoopRangeChangeTests.testLoopStillWorksAfterRangeChange` 偶发失败（读到改点前的残留采样） | 确认为**测试竞态**：`ResetObservation()` 只清标志，消费者可能仍读到改点前的数据并抢先记录。改为记录期望的丢弃代次，只有 `FlushCount` 达标后才开始观测；连续 5 次运行均通过 |
+| B8 | 任务 6.2 真机日志把 FIFO 播放误报为 `440 Hz tone fallback`，与 `source=ring buffer` 的实际行为矛盾 | 确认为**日志文案缺陷**（不影响音频路径）：`AudioOutput::Start()` 无条件打印 tone 文案。改为按 `toneMode_` 输出 `source=tone` / `source=ring buffer`，真机复测确认打印 `source=ring buffer` |
+| B9 | 任务 6.2 后重跑 `verify.ps1` 时 `cmake build failed`，`audio_decoder.h(31,5): error C2059` 等大量语法错误 | 确认为**工具链编码问题**（源码未改动）：MSVC 按系统代码页 936 解析 UTF-8 中文注释，多字节字符吞掉换行导致语法错误（伴随 C4819 警告）。在 `CMakeLists.txt` 的测试路径加 `add_compile_options(/utf-8)` 后 10 套件全通过 |
+| B10 | `scripts/verify.ps1` 首行出现两个 BOM（`EF BB BF EF BB BF`），PowerShell 解析 `param` 块失败 | 确认为**文件编码损坏**：去掉多余 BOM 后恢复正常；该文件此前被外部工具改写，非本次代码改动引入 |
 
 ### 构建日志中的已知告警（非缺陷）
 
@@ -283,7 +301,7 @@
 
 | 编号 | 偏差 | 等级 | 处理 |
 |---|---|---|---|
-| D1 | 真机曾断开（`hdc list targets` 为空），真机安装与听测无法执行 | 已解除 | 2026-11-05 真机 MRT-AL10 重新接入；安装、启动与 G0 正弦波听测均通过。循环听测仍待功能实现 |
+| D1 | 真机曾断开（`hdc list targets` 为空），真机安装与听测无法执行 | 已解除 | 2026-11-05 真机 MRT-AL10 重新接入；安装、启动与 G0 正弦波听测均通过。2026-11-23 再次接入，完成 6.2 / 6.3 循环听测 |
 | D2 | `compatibleSdkVersion` 已设为 26.0.0，可安装设备范围受限 | 一般 | 真机 `const.ohos.apiversion = 26` 已确认一致，维持不下调；若后续需覆盖更低版本设备，另开 change |
 | D3 | `fixtures/real/` 尚无真实素材，真实场景听测无法执行 | 严重 | 任务 1.3 待用户提供；已给出清单与获取方式 |
 | D4 | 音乐文件获取方式（Picker + 持久化 URI vs 沙箱导入）未定 | 一般 | 本变更用固定沙箱路径绕过；已写入 `design.md` Open Questions |
@@ -294,6 +312,7 @@
 | D9 | 真机安装失败：`code:9568320 / no signature file` | 已解除 | 人类已在根 `build-profile.json5` 配置 `signingConfigs`；2026-11-05 12:18 signed HAP 安装成功 |
 | D10 | `wmic.exe` 在 Win11 已移除，hvigor 的 daemon 进程探测回退到 `powershell Get-CimInstance`，每次约 1.36 秒 | 一般 | 属 hvigor 工具链行为，不影响本工程代码；registry 条目超过 8 条时会触发批量探测，建议定期 `hvigorw --stop-daemon` |
 | D11 | 任务 6.1 把合成 fixture 打进 `resources/rawfile/`，与 design.md「用户把文件放入沙箱」的预期不同 | 一般 | 真机沙箱目录无法直接 push，rawfile 是让 6.2 / 6.3 可复现的最小手段；真实素材的导入方案仍按 D4 另行决策 |
+| D12 | 改循环点瞬间产生 8192 字节（≈93 ms）欠载 | 一般 | 属「清空 FIFO + 重新预填」的固有代价，仍在 T05 的 200 ms 条款内；若后续要求零欠载，需改为「预填新数据后再切换」的双缓冲方案，另开 change |
 
 ## 5. 结论
 
@@ -301,10 +320,10 @@
 - [x] 需修复后复验（Build 阶段进行中，非归档态）
 - [ ] 需人类决策
 
-**说明**：Plan 阶段产物（proposal / design / tasks / delta spec）已完成并通过严格校验；合成 fixture 已生成并通过相位连续性数值检查；HAP 构建、真机安装、启动与 G0 正弦波听测均已实测通过。当前已完成任务 1.1、2.2~2.5、3.1~3.5、4.1~4.5、5.1~5.3、6.1 与 7.1~7.4（播放内核、桥接层、最小界面与证据收口）。剩余：6.2 / 6.3 听测需真机重新接入；7.5 归档需人类审查批准；1.3 真实素材待用户提供。
+**说明**：Plan 阶段产物（proposal / design / tasks / delta spec）已完成并通过严格校验；合成 fixture 已生成并通过相位连续性数值检查；HAP 构建、真机安装、启动与 G0 正弦波听测均已实测通过。当前已完成任务 1.1、2.2~2.5、3.1~3.5、4.1~4.5、5.1~5.3、6.1~6.3 与 7.1~7.4（播放内核、桥接层、最小界面、真机听测与证据收口）。剩余：7.5 归档需人类审查批准；1.3 真实素材待用户提供。
 
 已确认的决策：HarmonyOS SDK **26.0.0**、真实素材由用户提供、包名 `com.cpu.seamlessloopharmony`。
 
 真机实测环境：HUAWEI **MRT-AL10**（序列号 `5KTUT25424016774`），`OpenHarmony-7.0.0.111(SP12C00E111R5P2)`，`const.ohos.apiversion = 26`，与 `compatibleSdkVersion 26.0.0` 一致；签名已配置，signed HAP 安装成功。
 
-仍未完成：`fixtures/real/` 真实素材（任务 1.3）；循环边界听测（T15 / T16 / T05，随 6.2 / 6.3）。
+仍未完成：`fixtures/real/` 真实素材（任务 1.3）；归档（任务 7.5，需人类批准）。

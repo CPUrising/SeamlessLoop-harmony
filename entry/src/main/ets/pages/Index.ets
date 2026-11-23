@@ -42,6 +42,8 @@ struct Index {
   @State fixturePath: string = '';
   @State progressSeconds: number = 0;
   @State loopCount: number = 0;
+  @State underrunBytes: number = 0;
+  @State loopStart: number = 0;
   @State sampleRate: number = 0;
   @State totalFrames: number = 0;
   @State playing: boolean = false;
@@ -51,6 +53,10 @@ struct Index {
   aboutToAppear(): void {
     on('loop', (count: number) => {
       this.loopCount = count;
+    });
+    // T17 第 3 条：欠载事件端到端观测，累计静音字节数。
+    on('underrun', (bytes: number) => {
+      this.underrunBytes += bytes;
     });
     this.timerId = setInterval(() => {
       this.refresh();
@@ -64,6 +70,7 @@ struct Index {
       this.timerId = -1;
     }
     off('loop');
+    off('underrun');
   }
 
   // 把 rawfile 中的 fixture 复制到沙箱固定路径；已存在则直接复用。
@@ -102,6 +109,7 @@ struct Index {
     this.sampleRate = format.sampleRate;
     this.totalFrames = format.totalFrames;
     const loopStart: number = format.totalFrames - LOOP_SECONDS * format.sampleRate;
+    this.loopStart = loopStart;
     if (!setLoopPoints(loopStart, format.totalFrames)) {
       this.status = `循环点设置失败：${loopStart} → ${format.totalFrames}`;
       hilog.error(DOMAIN, TAG, 'setLoopPoints failed: %{public}d -> %{public}d', loopStart,
@@ -152,6 +160,24 @@ struct Index {
     this.loopCount = 0;
   }
 
+  // 任务 6.3：播放中把循环起点在「原值」与「原值 + 1 秒」之间切换，
+  // 用于听测改点是否产生明显中断（T05 的 200ms 条款）。
+  private shiftLoopStart(): void {
+    if (this.sampleRate <= 0 || this.totalFrames <= 0) {
+      return;
+    }
+    const base: number = this.totalFrames - LOOP_SECONDS * this.sampleRate;
+    const shifted: number = base + this.sampleRate;
+    const next: number = this.loopStart === base ? shifted : base;
+    if (!setLoopPoints(next, this.totalFrames)) {
+      this.status = `改点失败：${next} → ${this.totalFrames}`;
+      return;
+    }
+    this.loopStart = next;
+    this.status = `循环点 ${next} → ${this.totalFrames}`;
+    hilog.info(DOMAIN, TAG, 'loop points changed to %{public}d', next);
+  }
+
   build() {
     Column({ space: 16 }) {
       Text(this.status)
@@ -168,6 +194,10 @@ struct Index {
       Text(`进度 ${this.progressSeconds.toFixed(2)} s / 循环 ${this.loopCount} 次`)
         .fontSize(16)
 
+      Text(`欠载 ${this.underrunBytes} 字节`)
+        .fontSize(14)
+        .fontColor(this.underrunBytes === 0 ? Color.Gray : Color.Red)
+
       Row({ space: 16 }) {
         Button(this.playing ? '暂停' : '播放')
           .width(120)
@@ -181,6 +211,12 @@ struct Index {
             this.stopPlayback();
           })
       }
+
+      Button('改循环点')
+        .width(256)
+        .onClick(() => {
+          this.shiftLoopStart();
+        })
     }
     .width('100%')
     .height('100%')

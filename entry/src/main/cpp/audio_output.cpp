@@ -214,9 +214,10 @@ int32_t AudioOutput::Start()
         return static_cast<int32_t>(startRet);
     }
 
-    OH_LOG_INFO(LOG_APP, "renderer started: %{public}d Hz, %{public}d ch, %{public}d Hz tone fallback",
-                static_cast<int>(SampleRate()), static_cast<int>(Channels()),
-                static_cast<int>(kToneFrequencyHz));
+    // 数据源按当前模式区分，避免日志把 FIFO 播放误报成正弦波。
+    const char* source = toneMode_.load(std::memory_order_acquire) ? "tone" : "ring buffer";
+    OH_LOG_INFO(LOG_APP, "renderer started: %{public}d Hz, %{public}d ch, source=%{public}s",
+                static_cast<int>(SampleRate()), static_cast<int>(Channels()), source);
     return AUDIOSTREAM_SUCCESS;
 }
 

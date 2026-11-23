@@ -23,12 +23,12 @@
 | `AudioOutput` | 写回调数据规划（帧数换算 / 欠载判定 / 非对齐防护） | `AudioOutputLogicTests` | 通过 | 2026-11-05 实测：9 用例 / 528 断言 / 0 失败 |
 | `DecodeThread` | 持续解码、FIFO 满等待、停止语义 | `DecodeThreadTests` | 通过 | 2026-11-05 实测：7 用例 / 34 断言 / 0 失败；解出帧数与 manifest 完全一致 |
 | `RingBuffer` | T17 第 2 条：缓冲恢复后自动继续播放 | `RingBufferTests` | 通过 | 2026-11-05 实测：`testRecoversAfterUnderrun` + `testRecoversAfterUnderrunAcrossWrap`（含环绕边界）均通过 |
-| `AudioOutput` | T17 第 3 条：欠载事件回调上报 | `underrun` 事件 | 部分通过 | 2026-11-05 已接线：`AttachEngineToOutput()` 调用 `SetUnderrunCallback`，napi 暴露 `on('underrun')`；HAP 构建通过，真机端到端待 6.2 |
-| `napi` | 完整 API 与 ThreadSafeFunction 事件 | — | 部分通过 | 2026-11-05 构建通过；真机端到端（事件回调、真实播放）待 6.2 |
-| `UI` | 任务 6.1 页面加载 fixture 并显示进度 / 循环次数 | `Index.ets` | 部分通过 | 2026-11-05 构建与打包通过（`resources/rawfile/intro_loop_44100_mono.wav` 已在 HAP 内）；真机运行待 6.2 |
-| 听感验收 | T15 循环边界无静音间隙 | 人工听测 | 阻塞 | 真机于 19:06 断开；循环链路与 6.1 界面已就绪，待 6.2 听测 |
-| 听感验收 | T16 循环边界无爆音 | 人工听测 | 阻塞 | 真机已断开；合成 fixture 相位连续性已数值验证；待 6.2 |
-| 听感验收 | T05 播放中改循环点无明显中断 | 人工听测 | 阻塞 | 真机已断开；跳转与清空逻辑已通过单测，200ms 听感条款待 6.3 |
+| `AudioOutput` | T17 第 3 条：欠载事件回调上报 | `underrun` 事件 | 通过 | 2026-11-23 真机实测：正常循环期间页面「欠载 0 字节」，改点瞬间上报 8192 字节，事件端到端可用 |
+| `napi` | 完整 API 与 ThreadSafeFunction 事件 | — | 通过 | 2026-11-23 真机实测：`load / play / pause / stop / setLoopPoints / getProgress / getLoopCount / getFormat / on / off` 全部生效，`loop` 与 `underrun` 事件均到达 JS |
+| `UI` | 任务 6.1 页面加载 fixture 并显示进度 / 循环次数 | `Index.ets` | 通过 | 2026-11-23 真机实测：fixture 复制到 `filesDir` 并加载成功，进度与循环次数实时刷新，截图见 `artifacts/slh_ui_6_2_*.jpeg` |
+| 听感验收 | T15 循环边界无静音间隙 | 人工听测 | 通过 | 2026-11-23 真机跨越 18 次循环边界，`total underrun bytes=0`，人类判定「无间隙、无爆音」 |
+| 听感验收 | T16 循环边界无爆音 | 人工听测 | 通过 | 同上；合成 fixture 相位连续性数值验证 + 真机听测「无爆音」 |
+| 听感验收 | T05 播放中改循环点无明显中断 | 人工听测 | 通过 | 2026-11-23 真机改点 33075→77175，欠载 8192 字节（≈93ms < 200ms），人类判定「无明显中断」 |
 | 真实素材 | `fixtures/real/` 真实曲目听测 | 人工听测 | 阻塞 | 待用户提供素材与循环点数值 |
 
 ## 已关闭
@@ -55,3 +55,4 @@
 | 2026-11-05 | napi 完整 API 与事件接线（任务 5.3） | 部分通过 | `artifacts/verify-0001-harmony-loop-kernel-20261105-190816.log`；HAP 构建通过，真机端到端待 6.2 |
 | 2026-11-05 | 最小界面构建与打包（任务 6.1） | 部分通过 | `artifacts/verify-0001-harmony-loop-kernel-20261105-191425.log`；`CompileArkTS` 与 `SignHap` 通过，rawfile fixture 已入 HAP；真机运行待 6.2 |
 | 2026-11-05 | Build 阶段证据收口（任务 7.1~7.4） | 通过 | `artifacts/verify-0001-harmony-loop-kernel-20261105-191954.log`；4 steps / 0 failed，10 套件 / 1172 断言，`traceability` 与 `regression-log` 已更新 |
+| 2026-11-23 | 真机循环听测（任务 6.2 / 6.3） | 通过 | 真机 MRT-AL10：跨越 18 次循环边界欠载 0 字节、改点欠载 8192 字节；人类判定「无间隙、无爆音」「无明显中断」；截图 `artifacts/slh_ui_6_2_*.jpeg`、`slh_ui_6_3_*.jpeg` |

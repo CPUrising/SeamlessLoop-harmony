@@ -36,6 +36,12 @@ if(BUILD_TESTS AND NOT CMAKE_SYSTEM_NAME STREQUAL "OHOS")
     set(CMAKE_CXX_STANDARD 17)
     set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+    # 源码是 UTF-8（含中文注释）。MSVC 默认按系统代码页（936）解析，
+    # 会把注释里的多字节字符吞进下一行导致语法错误，必须显式指定 /utf-8。
+    if(MSVC)
+        add_compile_options(/utf-8)
+    endif()
+
     add_executable(ring_buffer_tests
         tests/ring_buffer_test.cpp
         ring_buffer.cpp)

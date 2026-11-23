@@ -21,9 +21,9 @@
 | T12 | 加载后可播放 | 同上 → `T12` | `DecoderTests.testLoadReportsFormat` | 通过 |
 | T13 | 暂停后恢复不丢位置 | 同上 → `T13` | `TransportTests.testPauseResumeKeepsPosition` | 通过 |
 | T14 | 按采样点跳转 | 同上 → `T14` | `TransportTests.testSeekClampsAndAligns` + `testSeekWhilePlayingFlushesBuffer` | 通过 |
-| T15 | 循环边界无静音间隙 | 同上 → `T15` | 离线波形分析 + 真机听测 | 已实现待执行（6.1 界面已就绪；6.2 听测阻塞于真机断开） |
-| T16 | 循环边界无爆音 | 同上 → `T16` | 离线波形分析 + 真机听测 | 已实现待执行（相位连续性已数值验证；6.2 听测阻塞于真机断开） |
-| T17 | 缓冲欠载可恢复 | 同上 → `T17` | `RingBufferTests` + `AudioOutputLogicTests` + `underrun` 事件 | 部分通过（第 1、2 条已通过；第 3 条事件已接线，真机端到端待 6.2） |
+| T15 | 循环边界无静音间隙 | 同上 → `T15` | 离线波形分析 + 真机听测 | 通过（2026-11-23 真机跨越 18 次边界，欠载 0 字节，听感「无间隙」） |
+| T16 | 循环边界无爆音 | 同上 → `T16` | 离线波形分析 + 真机听测 | 通过（相位连续性数值验证 + 真机听感「无爆音」） |
+| T17 | 缓冲欠载可恢复 | 同上 → `T17` | `RingBufferTests` + `AudioOutputLogicTests` + `underrun` 事件 | 通过（三条全部实测：静音填充、恢复续播、事件端到端） |
 
 ## 状态取值
 
@@ -45,3 +45,4 @@
 | 2026-11-05 | `0001-harmony-loop-kernel` | 任务 5.2 完成：新增 `PlaybackEngine` 与 `TransportTests`（10 用例 / 84 断言），T13 / T14 → 通过 |
 | 2026-11-05 | `0001-harmony-loop-kernel` | 任务 5.3 完成：napi 暴露完整 API 与 `loop` / `end` / `underrun` 事件（ThreadSafeFunction）；T17 第 3 条已接线，真机端到端待 6.2 |
 | 2026-11-05 | `0001-harmony-loop-kernel` | 任务 6.1 完成：最小 ArkTS 页面（fixture 加载、播放/暂停、进度与循环次数）；T15 / T16 由「未实现」改为「已实现待执行」，听测仍阻塞于真机断开 |
+| 2026-11-23 | `0001-harmony-loop-kernel` | 任务 6.2 / 6.3 完成：真机跨越 18 次循环边界欠载 0 字节、改点欠载 8192 字节；T15 / T16 / T17 / T05 全部转为「通过」 |

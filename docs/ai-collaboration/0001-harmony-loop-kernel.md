@@ -24,6 +24,7 @@
 | 2026-11-05 | 按 tasks.md 推进任务 5.3：napi 暴露完整 API 与 `loop` / `end` / `underrun` 事件（ThreadSafeFunction），`AudioOutput` 支持按文件格式配置渲染器 | 不改 ArkTS 页面（6.1）、不做真机听测（6.2 / 6.3，真机已断开） |
 | 2026-11-05 | 按 tasks.md 推进任务 6.1：最小 ArkTS 页面（加载 fixture、播放/暂停、进度与循环次数），fixture 经 rawfile 复制到沙箱固定路径 | 不做文件选择器、不做播放列表、不做 UI 美化；真机运行与听测（6.2 / 6.3）不做，真机当前断开 |
 | 2026-11-05 | 按 tasks.md 推进任务 7.1~7.4：核对既有单测覆盖、跑 `verify.ps1 --change` 存证、回填验证报告与验证债、更新 traceability 与 regression-log | 不新增业务代码、不执行 7.5 归档（需人类批准）、不把未跑过的真机听测写成通过 |
+| 2026-11-23 | 真机重新接入后推进任务 6.2 / 6.3：安装运行、连续跨越 18 次循环边界、播放中改循环点，页面补欠载计数与「改循环点」按钮；修正 `renderer started` 日志误报 | 不改循环内核逻辑、不新增播放功能、不执行 7.5 归档 |
 
 ## 2. AI 产出
 
@@ -57,6 +58,8 @@
 | 测试（任务 5.2） | `cpp/tests/transport_test.cpp`；`cpp/CMakeLists.txt` 增加 `TransportTests` |
 | Native（任务 5.3） | `cpp/napi_init.cpp`（完整 API + ThreadSafeFunction 事件）、`cpp/audio_output.{h,cpp}`（`Configure` 与按格式取 BlockAlign）、`cpp/types/libentry/index.d.ts` |
 | UI（任务 6.1） | `entry/src/main/ets/pages/Index.ets`（加载、播放/暂停、停止、进度与循环次数）；`entry/src/main/resources/rawfile/intro_loop_44100_mono.wav` |
+| UI（任务 6.2 / 6.3） | `Index.ets` 增加欠载字节数展示与「改循环点」按钮；`cpp/audio_output.cpp` 修正 `renderer started` 日志的数据源文案 |
+| 证据（任务 6.2 / 6.3） | `artifacts/slh_ui_6_1.jpeg`、`slh_ui_6_2_layout.jpeg`、`slh_ui_6_2_10loops.jpeg`、`slh_ui_6_3_after_change.jpeg`、`slh_ui_6_3_after10s.jpeg` |
 
 关键决策记录在 `openspec/changes/0001-harmony-loop-kernel/design.md`（8 条决策，含放弃的方案）。
 
@@ -101,5 +104,7 @@
 | 2026-11-05 | `verify.ps1 --change 0001-harmony-loop-kernel`（任务 5.3 后） | PASS（4 steps, 0 failed；单测 10 套件 / 1172 断言） | `artifacts/verify-0001-harmony-loop-kernel-20261105-190816.log` |
 | 2026-11-05 | `verify.ps1 --change 0001-harmony-loop-kernel`（任务 6.1 后） | PASS（4 steps, 0 failed；单测 10 套件 / 1172 断言；HAP 含 rawfile fixture） | `artifacts/verify-0001-harmony-loop-kernel-20261105-191425.log` |
 | 2026-11-05 | `verify.ps1 --change 0001-harmony-loop-kernel`（任务 7.1~7.4 收口） | PASS（4 steps, 0 failed；单测 10 套件 / 1172 断言） | `artifacts/verify-0001-harmony-loop-kernel-20261105-191954.log` |
+| 2026-11-23 | 真机安装 + `aa start` + 循环听测（任务 6.2 / 6.3） | PASS（跨越 18 次循环边界欠载 0 字节；改点欠载 8192 字节；人类判定「无间隙、无爆音」「无明显中断」） | `docs/verify/0001-harmony-loop-kernel.md`「任务 6.2 / 6.3 真机听测」；截图 `artifacts/slh_ui_6_2_*.jpeg`、`slh_ui_6_3_*.jpeg` |
+| 2026-11-23 | `verify.ps1 --change 0001-harmony-loop-kernel`（6.2 / 6.3 后回归） | PASS（4 steps, 0 failed；单测 10 套件 / 1172 断言） | `artifacts/verify-0001-harmony-loop-kernel-20261123-094120.log` |
 
-未执行项：T15~T16 为 `NOT RUN`（需真机听测，待 6.2）；T02 / T05 为部分通过（运行时链路与听感条款）；T17 第 3 条事件已接线但未真机验证；任务 6.1 页面构建与打包通过但未真机运行；任务 6.2 / 6.3 循环听测待真机重新接入后执行；任务 7.5 归档待人类审查批准。详见 `docs/verification-debt.md`。
+未执行项：任务 7.5 归档待人类审查批准；任务 1.3 `fixtures/real/` 真实素材待用户提供。T01~T17 全部场景已通过（T02 的「播放不中断」由 6.3 真机改点覆盖）。详见 `docs/verification-debt.md`。
