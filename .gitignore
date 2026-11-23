@@ -13,6 +13,9 @@
 /artifacts
 # DevEco / hdc 运行时产生的崩溃转储，不入库
 Crash_*.dmp
+# 本机签名配置：含个人绝对路径与加密后的签名密码，由 DevEco 自动改写，不入库
+# 新环境需在 DevEco 中重新配置 signingConfigs 才能构建 HAP
+/build-profile.json5
 # 真实音乐素材（AGENTS.md 硬约束 6：禁止提交真实音乐文件）
 # 本地复制到 rawfile 仅供真机听测，不入库
 /entry/src/main/resources/rawfile/bgm03_2_a.ogg
