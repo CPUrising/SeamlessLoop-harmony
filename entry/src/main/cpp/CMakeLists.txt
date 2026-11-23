@@ -21,6 +21,7 @@ set(SLH_CORE_SOURCES
     loop_config.cpp
     playback_engine.cpp
     ab_pair.cpp
+    audio_source.cpp
     third_party/dr_libs_impl.c
     third_party/stb_vorbis_impl.c)
 
@@ -97,6 +98,16 @@ if(BUILD_TESTS AND NOT CMAKE_SYSTEM_NAME STREQUAL "OHOS")
     target_compile_definitions(ab_pair_tests PRIVATE
         FIXTURE_DIR="${NATIVERENDER_ROOT_PATH}/../../../../fixtures/synthetic")
     add_test(NAME AbPairTests COMMAND ab_pair_tests)
+
+    add_executable(audio_source_tests
+        tests/audio_source_test.cpp
+        ${SLH_CORE_SOURCES})
+    target_include_directories(audio_source_tests PRIVATE
+        ${NATIVERENDER_ROOT_PATH}
+        ${NATIVERENDER_ROOT_PATH}/tests)
+    target_compile_definitions(audio_source_tests PRIVATE
+        FIXTURE_DIR="${NATIVERENDER_ROOT_PATH}/../../../../fixtures/synthetic")
+    add_test(NAME AudioSourceTests COMMAND audio_source_tests)
 
     add_executable(loop_counter_tests
         tests/loop_counter_test.cpp

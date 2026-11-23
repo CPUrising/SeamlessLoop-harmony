@@ -21,9 +21,9 @@
 
 ## 4. 虚拟时间轴数据源
 
-- [ ] 4.1 实现 `audio_source.{h,cpp}`：单文件与 A/B 两种模式，对外暴露 `Format` / `SeekToFrame` / `ReadFrames`
-- [ ] 4.2 跨文件读取：读到 A 末尾自动切 B，不返回 0；虚拟轴末尾才返回 0
-- [ ] 4.3 补 `AudioSourceTests`：`p = NA-1` / `p = NA` / `p = NA+NB-1` 三个边界、跨文件连续读取、seek 跨文件
+- [x] 4.1 实现 `audio_source.{h,cpp}`：单文件与 A/B 两种模式，对外暴露 `Format` / `SeekToFrame` / `ReadFrames`
+- [x] 4.2 跨文件读取：读到 A 末尾自动切 B，不返回 0；虚拟轴末尾才返回 0
+- [x] 4.3 补 `AudioSourceTests`：`p = NA-1` / `p = NA` / `p = NA+NB-1` 三个边界、跨文件连续读取、seek 跨文件
 
 ## 5. 接入循环内核
 
